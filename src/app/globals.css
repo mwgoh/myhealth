@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+/* 기본은 밝은 모드. 분류 색은 바벨 원판 색(빨강 25kg, 파랑 20kg, 노랑 15kg, 초록 10kg)에서 가져왔다 */
+:root {
+  /* 날짜 선택기 등 기본 입력 요소도 밝기 설정을 따르게 한다 */
+  color-scheme: light dark;
+  --bg: #eef0f2;
+  --surface: #ffffff;
+  --ink: #1b1f24;
+  --muted: #5e6670;
+  --line: #d9dde2;
+  --danger: #c21f33;
+  --cat-strength: #d7263d;
+  --cat-bodyweight: #1f5fbf;
+  --cat-core: #e0ac00;
+  --cat-stretching: #2e9e5b;
+  --cat-cardio: #8a939d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17191c;
+    --surface: #212429;
+    --ink: #e9ecef;
+    --muted: #9aa3ad;
+    --line: #33373d;
+    --danger: #ff6b7a;
+    --cat-strength: #ff5a6e;
+    --cat-bodyweight: #5b8fe6;
+    --cat-core: #f2c230;
+    --cat-stretching: #4cc27f;
+    --cat-cardio: #a3acb6;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-danger: var(--danger);
+  --color-cat-strength: var(--cat-strength);
+  --color-cat-bodyweight: var(--cat-bodyweight);
+  --color-cat-core: var(--cat-core);
+  --color-cat-stretching: var(--cat-stretching);
+  --color-cat-cardio: var(--cat-cardio);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
