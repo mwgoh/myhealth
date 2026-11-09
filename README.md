@@ -9,6 +9,7 @@
 | `npm run dev` | 개발 서버 실행 (http://localhost:3000) |
 | `npm test` | 단위 테스트 (Vitest) |
 | `npm run build` | 정적 사이트 생성 (`out/`) |
+| `npm start` | 빌드한 `out/`을 정적 서버로 실행 (http://localhost:3000). 먼저 `npm run build`를 한다 |
 | `npm run lint` | ESLint 검사 |
 
 ## 문서
