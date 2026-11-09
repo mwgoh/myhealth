@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // 영상 프로젝트는 따로 빌드·검사한다
+    "video/**",
   ]),
 ]);
 

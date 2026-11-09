@@ -12,10 +12,24 @@
 | `npm start` | 빌드한 `out/`을 정적 서버로 실행 (http://localhost:3000). 먼저 `npm run build`를 한다 |
 | `npm run lint` | ESLint 검사 |
 
+## 운동 영상
+
+편집 화면의 ⓘ 가이드에서 따라하기 영상을 재생한다(스쿼트, 푸시업, 플랭크, 햄스트링 스트레칭, 줄넘기). 영상은 `video/` 프로젝트(Remotion)에서 만들어 `public/videos/`에 둔다.
+
+```bash
+cd video
+npm install
+npm test          # 단위 테스트
+npm run render    # public/videos/*.mp4 다시 만들기
+```
+
+Remotion은 개인과 3인 이하 회사는 무료이고, 그보다 큰 조직이 상업적으로 쓰려면 라이선스가 필요하다.
+
 ## 문서
 
 - 설계: `docs/superpowers/specs/2026-11-09-workout-log-design.md`
 - 구현 계획: `docs/superpowers/plans/2026-11-09-workout-log.md`
+- 운동 영상 설계: `docs/superpowers/specs/2026-11-09-exercise-videos-design.md`
 
 ## 데이터 주의
 

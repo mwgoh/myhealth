@@ -7,7 +7,7 @@
 - [AGENTS.md](AGENTS.md): Next.js 16.4 주의사항, 정적 내보내기 제약, `Suspense`, 날짜 규칙. 여기서는 반복하지 않는다.
 - 설계 문서 `docs/superpowers/specs/2026-11-09-workout-log-design.md`: 동작의 기준이다. 입력값 범위는 4절, 요약 계산은 6절, 오류 처리는 9절에 있다.
 - 구현 계획 `docs/superpowers/plans/2026-11-09-workout-log.md`: 맨 앞 "전역 제약"과 "리뷰 중점"이 아래 규칙의 출처다. 계획의 "git 명령을 실행하지 않는다"는 저장소가 없던 때의 제약이라 지금은 맞지 않는다.
-- `docs/superpowers/specs/2026-11-09-exercise-videos-design.md`는 사용자 검토 대기 중이고 아직 구현되지 않았다. `video/` 폴더도 없다.
+- 운동 영상 설계 `docs/superpowers/specs/2026-11-09-exercise-videos-design.md`: 맨 앞 "검토 반영" 표가 원래 설계에서 바뀐 점이다. 아래 "운동 영상" 절 참고.
 
 ## 명령
 
@@ -73,6 +73,35 @@
 - `eslint-disable` 주석은 쓰지 않는다. React Hooks 규칙에 걸리면 렌더링 중에 상태를 계산하거나 `key`로 해결한다(예: `workout/page.tsx`의 세션 전환).
 - UI 문구는 한국어다.
 - 색은 `globals.css`의 CSS 변수를 Tailwind 색으로 쓴다(`bg-bg`, `bg-surface`, `text-ink`, `text-muted`, `border-line`, `text-danger`, `bg-cat-*`). 다크 모드는 `prefers-color-scheme`에 따라 변수 값이 바뀌므로 `dark:` 변형을 쓰지 않는다.
+
+## 운동 영상 (`video/`)
+
+편집 화면 ⓘ 가이드에서 재생하는 따라하기 영상(`public/videos/<seedId>.mp4`)을 Remotion으로 만드는 별도 npm 프로젝트다. 앱의 `tsconfig.json`과 ESLint는 `video/`를 제외한다. 명령은 `video/` 안에서 실행한다.
+
+| 명령 | 내용 |
+|---|---|
+| `npm install` | 처음 한 번 |
+| `npm test` | 관절 계산, 카운터, 종목 제약(모든 프레임) 테스트 |
+| `npm run typecheck` | 타입 검사 |
+| `npm run stills [-- <폴더>]` | 종목마다 주요 순간 PNG 5장. 기본 위치 `video/out/stills` |
+| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만 |
+| `npm run studio` | 브라우저 미리보기 (포트 3940) |
+
+- 렌더링용 내부 서버 포트는 3939로 고정했다. 기본값으로 두면 앱 서버가 3000번을 쓰고 있어도 Remotion이 3000번을 골라 앱 페이지에 연결된다.
+- 구조
+  - `src/figure/geometry.ts`: 정기구학(`poseFromAngles`), 2관절 IK(`solveTwoBone`, 굽는 방향은 `hint` 벡터), 보간
+  - `src/exercises/<종목>.ts`: 본 동작 프레임 → 자세(`pose(frame)`)와 소품. `index.ts`의 `VIDEO_EXERCISES`에 등록한다
+  - `src/scenes/counter.ts`: 프레임 → 카운터 표시값·진행 비율
+- 종목 이름·분류·주요 부위·핵심 포인트는 앱의 `src/domain/seed.ts`를 상대 경로로 가져온다(`src/app-data.ts`).
+  - `seed.ts`는 `./types`를 `import type`으로만 가져와야 한다. 값으로 가져오면 영상 번들에 zod가 들어간다.
+  - 영상이 있는 종목의 문구를 바꾸면 영상을 다시 렌더링한다.
+- 분류 라벨과 색은 `src/layout.ts`에 복사본이 있다. `layout.test.ts`가 앱의 `types.ts`·`globals.css`와 같은지 확인한다.
+- 종목을 추가하는 순서
+  1. `src/exercises/`에 정의를 만들고 `VIDEO_EXERCISES`에 등록한다.
+  2. `exercises.test.ts`에 그 종목의 제약을 추가한다.
+  3. `npm run stills`로 자세를 눈으로 확인한다.
+  4. `npm run render -- <id>`로 렌더링한다.
+  5. 앱의 `src/domain/videos.ts`의 `GUIDE_VIDEOS`에 ID를 추가한다. 앱 테스트가 목록과 파일이 일치하는지 확인한다.
 
 ## 테스트
 
