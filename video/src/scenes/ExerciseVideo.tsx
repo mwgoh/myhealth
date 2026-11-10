@@ -3,10 +3,10 @@ import { AbsoluteFill, interpolate, Sequence, useCurrentFrame, useVideoConfig } 
 import type { Category } from "../../../src/domain/types";
 import { getGuide, SEED_EXERCISES } from "../app-data";
 import { VIDEO_EXERCISES } from "../exercises";
-import type { ExerciseVideoDef, Prop } from "../exercises/types";
-import { Figure } from "../figure/Figure";
-import { CATEGORY_COLOR, CATEGORY_LABEL, COLOR, FLOOR_LINE_WIDTH, FLOOR_LINE_Y, FONT, SIZE } from "../layout";
+import type { ExerciseVideoDef } from "../exercises/types";
+import { CATEGORY_COLOR, CATEGORY_LABEL, COLOR, FONT, SIZE } from "../layout";
 import { counterAt, DONE_FRAMES, mainFrames, TITLE_FRAMES } from "./counter";
+import { StageContent } from "./Stage";
 
 export type ExerciseVideoProps = { id: string };
 
@@ -56,25 +56,9 @@ function DoneScene({ info }: { info: Info }) {
   );
 }
 
-function PropShape({ prop, color }: { prop: Prop; color: string }) {
-  if (prop.kind === "barbell") {
-    // 옆에서 보면 막대는 보이지 않고 원판만 보인다
-    return (
-      <g>
-        <circle cx={prop.center.x} cy={prop.center.y} r={44} fill={color} />
-        <circle cx={prop.center.x} cy={prop.center.y} r={9} fill={COLOR.hub} />
-      </g>
-    );
-  }
-  const { hand, ctrl, apex } = prop;
-  return <path d={`M ${hand.x} ${hand.y} Q ${ctrl.x} ${ctrl.y} ${apex.x} ${apex.y}`} fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" />;
-}
-
 function MainScene({ def, info }: { def: ExerciseVideoDef; info: Info }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const pose = def.pose(frame);
-  const prop = def.prop?.(frame, pose);
   const counter = counterAt(def.timing, frame, fps);
   const color = CATEGORY_COLOR[info.category];
 
@@ -89,9 +73,7 @@ function MainScene({ def, info }: { def: ExerciseVideoDef; info: Info }) {
       </div>
 
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ position: "absolute", inset: 0 }}>
-        <line x1={40} x2={SIZE - 40} y1={FLOOR_LINE_Y} y2={FLOOR_LINE_Y} stroke={COLOR.muted} strokeWidth={FLOOR_LINE_WIDTH} strokeLinecap="round" />
-        {prop && <PropShape prop={prop} color={color} />}
-        <Figure pose={pose} />
+        <StageContent def={def} frame={frame} accent={color} />
       </svg>
 
       <div

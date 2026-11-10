@@ -7,11 +7,12 @@ import { GUIDE_VIDEOS, guideVideoSrc } from "./videos";
 const VIDEO_DIR = fileURLToPath(new URL("../../public/videos/", import.meta.url));
 
 describe("guideVideoSrc", () => {
-  it("영상이 있는 종목은 /videos/<id>.mp4", () => {
+  it("기본 종목은 모두 /videos/<id>.mp4", () => {
     expect(guideVideoSrc("seed-squat")).toBe("/videos/seed-squat.mp4");
+    for (const e of SEED_EXERCISES) expect(guideVideoSrc(e.id)).toBe(`/videos/${e.id}.mp4`);
   });
-  it("영상이 없는 종목은 undefined", () => {
-    expect(guideVideoSrc("seed-bench-press")).toBeUndefined();
+  it("직접 추가한 종목은 영상이 없다", () => {
+    expect(guideVideoSrc("3f2b8c1e-0000-4000-8000-000000000000")).toBeUndefined();
     expect(guideVideoSrc("toString")).toBeUndefined();
   });
 });

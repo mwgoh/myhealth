@@ -3,7 +3,7 @@ import { GROUND_Y } from "../layout";
 import { repPhase, type RepsTiming } from "../scenes/counter";
 import type { ExerciseVideoDef } from "./types";
 
-const timing: RepsTiming = { kind: "reps", reps: 10, downFrames: 60, upFrames: 30 };
+const timing: RepsTiming = { kind: "reps", reps: 10, goFrames: 60, returnFrames: 30 };
 
 // 기준점: 가까운 쪽 발끝. 발은 발목에서 아래(약간 뒤)로 세운다.
 const TOE: Vec = { x: 100, y: GROUND_Y };

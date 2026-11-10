@@ -76,8 +76,12 @@ export type Angles = {
 
 export type Limbs = { elbow: Vec; hand: Vec; knee: Vec; ankle: Vec; toe: Vec };
 
-/** neck은 목 위끝(머리 아래), head는 머리 중심이다. near는 가까운 쪽, far는 먼 쪽 팔다리다. */
-export type Pose = { hip: Vec; shoulder: Vec; neck: Vec; head: Vec; near: Limbs; far: Limbs };
+/**
+ * neck은 목 위끝(머리 아래), head는 머리 중심이다. near는 가까운 쪽, far는 먼 쪽 팔다리다.
+ * spineBend는 등을 휘어 그릴 때 몸통 가운데가 엉덩이→어깨 직선에서 벗어나는 거리(px)다.
+ * 양수면 등 쪽(몸통 방향 +90°)으로 둥글게, 음수면 배 쪽으로 처진다. 관절 위치에는 영향이 없다.
+ */
+export type Pose = { hip: Vec; shoulder: Vec; neck: Vec; head: Vec; near: Limbs; far: Limbs; spineBend?: number };
 
 export type Side = "near" | "far";
 
@@ -86,6 +90,39 @@ export function lerpAngles(a: Angles, b: Angles, t: number): Angles {
   for (const k of Object.keys(a) as (keyof Angles)[]) out[k] = lerp(a[k], b[k], t);
   return out;
 }
+
+/** 두 각도 사이를 짧은 쪽으로 돈다(170° → -170°는 20°만 돈다) */
+export function lerpAngleShortest(a: number, b: number, t: number): number {
+  const diff = ((((b - a) % 360) + 540) % 360) - 180;
+  return a + diff * t;
+}
+
+export function lerpAnglesShortest(a: Angles, b: Angles, t: number): Angles {
+  const out = { ...a };
+  for (const k of Object.keys(a) as (keyof Angles)[]) out[k] = lerpAngleShortest(a[k], b[k], t);
+  return out;
+}
+
+/** 자세에서 마디 각도를 거꾸로 읽는다. IK로 만든 자세를 키프레임으로 저장할 때 쓴다. */
+export function anglesOf(p: Pose): Angles {
+  return {
+    torso: angleOf(p.hip, p.shoulder),
+    head: angleOf(p.shoulder, p.neck),
+    nearUpperArm: angleOf(p.shoulder, p.near.elbow),
+    nearForearm: angleOf(p.near.elbow, p.near.hand),
+    farUpperArm: angleOf(p.shoulder, p.far.elbow),
+    farForearm: angleOf(p.far.elbow, p.far.hand),
+    nearThigh: angleOf(p.hip, p.near.knee),
+    nearShin: angleOf(p.near.knee, p.near.ankle),
+    nearFoot: angleOf(p.near.ankle, p.near.toe),
+    farThigh: angleOf(p.hip, p.far.knee),
+    farShin: angleOf(p.far.knee, p.far.ankle),
+    farFoot: angleOf(p.far.ankle, p.far.toe),
+  };
+}
+
+/** 가까운 쪽과 먼 쪽 팔다리를 바꾼다. 좌우를 번갈아 하는 동작에 쓴다. */
+export const swapSides = (p: Pose): Pose => ({ ...p, near: p.far, far: p.near });
 
 function limbs(hip: Vec, shoulder: Vec, upper: number, fore: number, thigh: number, shin: number, foot: number): Limbs {
   const elbow = step(shoulder, upper, SEG.upperArm);
@@ -124,6 +161,7 @@ const moveLimbs = (l: Limbs, d: Vec): Limbs => ({
 
 export function translate(p: Pose, d: Vec): Pose {
   return {
+    ...p,
     hip: add(p.hip, d),
     shoulder: add(p.shoulder, d),
     neck: add(p.neck, d),
@@ -167,9 +205,13 @@ export function segments(p: Pose): [Vec, Vec, number][] {
   return out;
 }
 
-/** 바닥 검사용 점: 모든 관절과 머리 아래끝 */
-export function lowPoints(p: Pose): Vec[] {
-  const pts = [p.hip, p.shoulder, p.neck, { x: p.head.x, y: p.head.y + SEG.headR }];
+/**
+ * 바닥 검사용 점: 모든 관절과 머리 아래끝.
+ * headInset만큼 머리 아래끝을 올려 잡는다. 팔다리는 선 두께의 절반이 바닥 쪽으로 나오므로,
+ * 같은 값을 주면 바닥에 누운 머리와 팔다리가 같은 기준으로 바닥에 닿는다.
+ */
+export function lowPoints(p: Pose, headInset = 0): Vec[] {
+  const pts = [p.hip, p.shoulder, p.neck, { x: p.head.x, y: p.head.y + SEG.headR - headInset }];
   for (const l of [p.near, p.far]) pts.push(l.elbow, l.hand, l.knee, l.ankle, l.toe);
   return pts;
 }

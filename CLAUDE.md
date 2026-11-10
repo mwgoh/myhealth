@@ -83,25 +83,31 @@
 | `npm install` | 처음 한 번 |
 | `npm test` | 관절 계산, 카운터, 종목 제약(모든 프레임) 테스트 |
 | `npm run typecheck` | 타입 검사 |
-| `npm run stills [-- <폴더>]` | 종목마다 주요 순간 PNG 5장. 기본 위치 `video/out/stills` |
-| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만 |
+| `npm run stills [-- <폴더> [sheet-01 ...]]` | 자세 확인 시트 PNG(종목 4개 × 주요 장면 3개). 기본 위치 `video/out/stills` |
+| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만. 42개 전체는 수십 분 걸린다 |
 | `npm run studio` | 브라우저 미리보기 (포트 3940) |
 
 - 렌더링용 내부 서버 포트는 3939로 고정했다. 기본값으로 두면 앱 서버가 3000번을 쓰고 있어도 Remotion이 3000번을 골라 앱 페이지에 연결된다.
+- Windows Bash에서는 `cd D:/myhealth/video`처럼 대문자 드라이브로 들어가 실행한다. `cd /d/...`로 들어가면 작업 폴더가 `d:\`(소문자)가 되어 vitest가 두 번 로드되고 모든 테스트 파일이 `Cannot read properties of undefined (reading 'config')`로 실패한다.
+- 한 장면을 원래 크기로 보려면 `npx remotion still src/index.ts <seed ID> <파일.png> --frame=<프레임> --port=3939`. 프레임은 제목 60프레임을 더한 값이다.
 - 구조
-  - `src/figure/geometry.ts`: 정기구학(`poseFromAngles`), 2관절 IK(`solveTwoBone`, 굽는 방향은 `hint` 벡터), 보간
-  - `src/exercises/<종목>.ts`: 본 동작 프레임 → 자세(`pose(frame)`)와 소품. `index.ts`의 `VIDEO_EXERCISES`에 등록한다
-  - `src/scenes/counter.ts`: 프레임 → 카운터 표시값·진행 비율
+  - `src/figure/geometry.ts`: 정기구학(`poseFromAngles`), 2관절 IK(`solveTwoBone`, 굽는 방향은 `hint` 벡터), 보간(짧은 쪽 각도 보간 포함)
+  - `src/exercises/<종목>.ts`: 본 동작 프레임 → 자세(`pose(frame)`)와 소품(`props`). `index.ts`의 `VIDEO_EXERCISES`에 앱 기본 종목과 같은 순서로 등록한다(테스트가 확인)
+  - `src/exercises/helpers.ts`: 선 자세·네 발 자세·버티기와 숨쉬기·키프레임 보간 같은 공통 도우미. `shapes.ts`: 기구 도형
+  - `src/scenes/counter.ts`: 타이밍(가기 → 멈춤 → 돌아오기) → 카운터 표시값·진행 비율
+  - `src/scenes/Stage.tsx`: 바닥·기구·사람 그림. 영상(`ExerciseVideo.tsx`)과 자세 확인 시트(`Sheet.tsx`)가 함께 쓴다
+- 각도 보간 주의: 각도는 숫자 그대로 보간한다. -90°에서 178°로 두면 앞쪽으로 크게 돌아가므로, 뒤쪽으로 돌게 하려면 -182°처럼 같은 방향의 값을 쓴다.
+- 공통 테스트가 모든 프레임에서 마디 길이, 바닥 아래 금지, 제목·카운터 영역 침범을 검사한다. 바닥 검사는 처음 걸린 점만 알려 주므로 값이 작아도 원인이 클 수 있다.
 - 종목 이름·분류·주요 부위·핵심 포인트는 앱의 `src/domain/seed.ts`를 상대 경로로 가져온다(`src/app-data.ts`).
   - `seed.ts`는 `./types`를 `import type`으로만 가져와야 한다. 값으로 가져오면 영상 번들에 zod가 들어간다.
   - 영상이 있는 종목의 문구를 바꾸면 영상을 다시 렌더링한다.
 - 분류 라벨과 색은 `src/layout.ts`에 복사본이 있다. `layout.test.ts`가 앱의 `types.ts`·`globals.css`와 같은지 확인한다.
-- 종목을 추가하는 순서
-  1. `src/exercises/`에 정의를 만들고 `VIDEO_EXERCISES`에 등록한다.
+- 기본 종목 42개 모두 영상이 있다. 앱의 `src/domain/videos.ts`는 기본 종목 목록에서 영상 목록을 만들고, 앱 테스트가 `public/videos/`의 파일과 일치하는지 확인한다.
+- 기본 종목을 추가하면 영상도 만들어야 앱 테스트가 통과한다.
+  1. `src/exercises/`에 정의를 만들고 `VIDEO_EXERCISES`에 같은 순서로 등록한다.
   2. `exercises.test.ts`에 그 종목의 제약을 추가한다.
   3. `npm run stills`로 자세를 눈으로 확인한다.
   4. `npm run render -- <id>`로 렌더링한다.
-  5. 앱의 `src/domain/videos.ts`의 `GUIDE_VIDEOS`에 ID를 추가한다. 앱 테스트가 목록과 파일이 일치하는지 확인한다.
 
 ## 테스트
 

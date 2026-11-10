@@ -68,7 +68,7 @@ export const jumpRope: ExerciseVideoDef = {
     // 가장 낮은 발 부위가 바닥에서 LIFT×airness 높이에 오도록 엉덩이 높이를 정한다
     return translate(pose, { x: 0, y: GROUND_Y - LIFT * a - lowestY(pose) });
   },
-  prop(frame, pose) {
+  props(frame, pose) {
     const phi = (270 + 360 * (ROPE_BOTTOM_AT - cyclePos(frame))) * (Math.PI / 180);
     const hand = pose.near.hand;
     const center = { x: pose.near.ankle.x, y: hand.y };
@@ -76,6 +76,7 @@ export const jumpRope: ExerciseVideoDef = {
     const apex = at(phi);
     // 줄이 도는 반대쪽으로 휘어 보이게 조금 뒤처진 점을 조절점으로 쓴다
     const lag = at(phi + (35 * Math.PI) / 180);
-    return { kind: "rope", hand, apex, ctrl: { x: center.x + 0.8 * (lag.x - center.x), y: center.y + 0.8 * (lag.y - center.y) } };
+    const ctrl = { x: center.x + 0.8 * (lag.x - center.x), y: center.y + 0.8 * (lag.y - center.y) };
+    return [{ kind: "path", d: `M ${hand.x} ${hand.y} Q ${ctrl.x} ${ctrl.y} ${apex.x} ${apex.y}`, stroke: "accent", width: 4 }];
   },
 };

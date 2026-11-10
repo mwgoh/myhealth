@@ -15,7 +15,23 @@ export const COLOR = {
   muted: "#5e6670",
   track: "#d9dde2",
   hub: "#8a939d",
+  // 기구(벤치·머신·벽)는 사람 그림보다 연하게
+  equip: "#b8bec6",
+  equipDark: "#8f979f",
+  water: "#cfe1ef",
 } as const;
+
+/**
+ * 카운터 글자가 차지하는 영역. 사람 그림 관절이 들어오면 안 된다(테스트가 확인).
+ * 오른쪽 정렬이라 글자 폭에 따라 왼쪽 끝이 다르다: "10 / 10"은 약 240px, "0:30"·"준비"는 약 150px.
+ */
+export const COUNTER_BOX = { left: 410, right: 690, top: 240, bottom: 355 } as const;
+export const COUNTER_BOX_SHORT = { ...COUNTER_BOX, left: 500 } as const;
+/**
+ * 제목 영역 아래끝. 사람 그림 관절은 이보다 아래에 있어야 한다(테스트가 확인).
+ * 제목 글자는 위 36px + 이름 줄(44px×1.2) + 4px + 주요 부위 줄(26px×1.2) ≈ 124px에서 끝난다.
+ */
+export const HEADER_BOTTOM = 135;
 
 /** 앱 globals.css의 밝은 모드 분류 색(바벨 원판 색)과 같다. layout.test.ts가 비교한다. */
 export const CATEGORY_COLOR: Record<Category, string> = {

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { counterAt, formatClock, mainFrames, repPhase, type Timing } from "./counter";
+import { counterAt, formatClock, mainFrames, repIndex, repPhase, type RepsTiming, type Timing } from "./counter";
 
 const FPS = 30;
-const REPS: Timing = { kind: "reps", reps: 10, downFrames: 60, upFrames: 30 };
+const REPS: RepsTiming = { kind: "reps", reps: 10, goFrames: 60, returnFrames: 30 };
+const PAUSED: RepsTiming = { kind: "reps", reps: 10, goFrames: 30, pauseFrames: 30, returnFrames: 30 };
 const HOLD: Timing = { kind: "hold", setupFrames: 60, holdFrames: 900 };
 const TIMER: Timing = { kind: "timer", frames: 900 };
 
@@ -29,11 +30,25 @@ describe("반복 종목", () => {
     expect(counterAt(REPS, 0, FPS).progress).toBe(0);
     expect(counterAt(REPS, 899, FPS).progress).toBe(1);
   });
-  it("repPhase: 시작은 선 자세(0), 내려가기 끝은 1, 올라오기 끝은 0", () => {
+  it("repPhase: 시작은 0, 가기 끝은 1, 돌아오기 끝은 0", () => {
     expect(repPhase(REPS, 0)).toBe(0);
     expect(repPhase(REPS, 60)).toBe(1);
     expect(repPhase(REPS, 89)).toBeLessThan(0.01);
     expect(repPhase(REPS, 90)).toBe(0);
+  });
+  it("repPhase: 멈춤 구간 동안 1을 유지한다", () => {
+    expect(mainFrames(PAUSED)).toBe(900);
+    expect(repPhase(PAUSED, 30)).toBe(1);
+    expect(repPhase(PAUSED, 59)).toBe(1);
+    expect(repPhase(PAUSED, 60)).toBe(1);
+    expect(repPhase(PAUSED, 89)).toBeLessThan(0.01);
+    expect(counterAt(PAUSED, 89, FPS).text).toBe("1 / 10");
+  });
+  it("repIndex: 몇 번째 반복인지 0부터 센다", () => {
+    expect(repIndex(REPS, 0)).toBe(0);
+    expect(repIndex(REPS, 89)).toBe(0);
+    expect(repIndex(REPS, 90)).toBe(1);
+    expect(repIndex(REPS, 899)).toBe(9);
   });
 });
 

@@ -18,7 +18,10 @@ const only = new Set(process.argv.slice(2));
 
 await ensureBrowser();
 const serveUrl = await bundle({ entryPoint: path.join(root, "src/index.ts") });
-const compositions = (await getCompositions(serveUrl, { port: PORT })).filter((c) => only.size === 0 || only.has(c.id));
+// 자세 확인 시트(sheet-*)는 영상이 아니므로 뺀다
+const compositions = (await getCompositions(serveUrl, { port: PORT })).filter(
+  (c) => c.id.startsWith("seed-") && (only.size === 0 || only.has(c.id)),
+);
 const missing = [...only].filter((id) => !compositions.some((c) => c.id === id));
 if (missing.length > 0) throw new Error(`없는 종목: ${missing.join(", ")}`);
 
