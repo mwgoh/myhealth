@@ -14,7 +14,19 @@ const ROWS: SeedRow[] = [
   ["seed-barbell-row", "바벨로우", "weighted", "strength", "등", "상체를 45도 숙이고 바를 배꼽 쪽으로 당긴다"],
   ["seed-lat-pulldown", "랫풀다운", "weighted", "strength", "광배·이두", "가슴을 들고 바를 쇄골 쪽으로 당긴다"],
   ["seed-leg-press", "레그프레스", "weighted", "strength", "허벅지·둔근", "무릎을 끝까지 펴서 잠그지 말고, 허리가 등판에서 뜨지 않게 한다"],
-  ["seed-dumbbell-curl", "덤벨컬", "weighted", "strength", "이두", "팔꿈치를 몸통 옆에 고정하고 반동 없이 올린다"],
+  // #케틀벨 (2026-11-10)
+  ["seed-kb-swing", "케틀벨 스윙", "weighted", "kettlebell", "둔근·햄스트링", "엉덩이를 뒤로 접었다가 힘차게 밀어 벨을 가슴 높이까지 띄운다"],
+  ["seed-kb-goblet-squat", "고블릿 스쿼트", "weighted", "kettlebell", "허벅지·둔근", "벨을 가슴 앞에 붙이고 팔꿈치가 무릎 안쪽을 지나도록 앉는다"],
+  ["seed-kb-deadlift", "케틀벨 데드리프트", "weighted", "kettlebell", "둔근·햄스트링·등", "벨을 두 발 사이에 두고 허리를 편 채 엉덩이로 일어선다"],
+  ["seed-kb-row", "케틀벨 원암 로우", "weighted", "kettlebell", "등", "상체를 숙여 한 손으로 벨을 옆구리로 당긴다, 한쪽을 한 세트로 적는다"],
+  ["seed-kb-press", "케틀벨 프레스", "weighted", "kettlebell", "어깨·삼두", "벨을 어깨에 얹은 자세에서 머리 위로 곧게 민다, 한쪽을 한 세트로 적는다"],
+  // #덤벨 (2026-11-10, 덤벨컬은 #근력운동에서 옮김)
+  ["seed-dumbbell-curl", "덤벨컬", "weighted", "dumbbell", "이두", "팔꿈치를 몸통 옆에 고정하고 반동 없이 올린다"],
+  ["seed-db-shoulder-press", "덤벨 숄더 프레스", "weighted", "dumbbell", "어깨·삼두", "덤벨을 귀 옆에서 머리 위로 밀고 허리가 젖혀지지 않게 한다"],
+  ["seed-db-bench-press", "덤벨 벤치프레스", "weighted", "dumbbell", "가슴·삼두", "덤벨을 가슴 옆까지 내리고 가슴 위로 모으듯 민다"],
+  ["seed-db-row", "원암 덤벨 로우", "weighted", "dumbbell", "등", "벤치에 한 손과 무릎을 대고 덤벨을 옆구리로 당긴다, 한쪽을 한 세트로 적는다"],
+  ["seed-db-lateral-raise", "덤벨 래터럴 레이즈", "weighted", "dumbbell", "어깨 옆", "팔꿈치를 살짝 굽힌 채 어깨 높이까지 옆으로 든다"],
+  ["seed-db-kickback", "덤벨 킥백", "weighted", "dumbbell", "삼두", "상체를 숙이고 위팔을 몸통에 붙인 채 팔꿈치를 펴 뒤로 민다"],
   // #맨몸운동
   ["seed-push-up", "푸시업", "reps", "bodyweight", "가슴·삼두", "머리부터 발끝까지 일직선, 팔꿈치는 몸통과 45도"],
   ["seed-pull-up", "풀업", "reps", "bodyweight", "등·이두", "견갑을 먼저 끌어내리고 턱이 바 위로 올라올 때까지"],
@@ -72,4 +84,29 @@ export function getGuide(exerciseId: string): Guide | undefined {
 
 export function createInitialStore(): Store {
   return { version: 1, exercises: SEED_EXERCISES.map((e) => ({ ...e })), workouts: [] };
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * 기본 종목은 처음 실행할 때 한 번만 저장소에 복사되므로, 나중에 코드에 더한 기본 종목을 채워 넣는다.
+ * - 저장된 데이터에 없는 기본 종목은 끝에 더한다. 같은 이름(공백·대소문자 무시)의 종목이 이미 있으면 사용자가 만든 것을 존중해 더하지 않는다.
+ * - 이미 있는 기본 종목은 분류만 코드에 맞춘다. 이름·측정 방식·숨김은 그대로 둔다(측정 방식을 바꾸면 기록과 맞지 않게 된다).
+ * 바뀐 것이 없으면 같은 객체를 돌려준다.
+ */
+export function syncSeedExercises(store: Store): Store {
+  const seedById = new Map(SEED_EXERCISES.map((e) => [e.id, e]));
+  let changed = false;
+  const exercises = store.exercises.map((e) => {
+    const seed = seedById.get(e.id);
+    if (!seed || seed.category === e.category) return e;
+    changed = true;
+    return { ...e, category: seed.category };
+  });
+  for (const seed of SEED_EXERCISES) {
+    if (exercises.some((e) => e.id === seed.id || sameName(e.name, seed.name))) continue;
+    exercises.push({ ...seed });
+    changed = true;
+  }
+  return changed ? { ...store, exercises } : store;
 }

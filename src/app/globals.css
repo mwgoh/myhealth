@@ -11,6 +11,8 @@
   --line: #d9dde2;
   --danger: #c21f33;
   --cat-strength: #d7263d;
+  --cat-kettlebell: #e8590c;
+  --cat-dumbbell: #7048e8;
   --cat-bodyweight: #1f5fbf;
   --cat-core: #e0ac00;
   --cat-stretching: #2e9e5b;
@@ -26,6 +28,8 @@
     --line: #33373d;
     --danger: #ff6b7a;
     --cat-strength: #ff5a6e;
+    --cat-kettlebell: #ff8a3d;
+    --cat-dumbbell: #9775fa;
     --cat-bodyweight: #5b8fe6;
     --cat-core: #f2c230;
     --cat-stretching: #4cc27f;
@@ -41,6 +45,8 @@
   --color-line: var(--line);
   --color-danger: var(--danger);
   --color-cat-strength: var(--cat-strength);
+  --color-cat-kettlebell: var(--cat-kettlebell);
+  --color-cat-dumbbell: var(--cat-dumbbell);
   --color-cat-bodyweight: var(--cat-bodyweight);
   --color-cat-core: var(--cat-core);
   --color-cat-stretching: var(--cat-stretching);

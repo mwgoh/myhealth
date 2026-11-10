@@ -43,10 +43,10 @@ export function MonthGrid({ year, month, selected, today, marks, onSelect }: Pro
                 }`}
               >
                 {Number(d.slice(8))}
-                {/* 분류는 최대 5개이고 점 5개(약 38px)가 칸 너비에 들어가므로 모두 그린다 */}
-                <span className="mt-0.5 flex h-1.5 gap-0.5">
+                {/* 분류는 최대 7개. 지름 5px·간격 2px로 7개(약 47px)가 칸 너비(약 53px)에 모두 들어간다 */}
+                <span className="mt-0.5 flex h-[5px] gap-0.5">
                   {cats.map((c) => (
-                    <span key={c} className={`size-1.5 rounded-full ${CATEGORY_DOT[c]}`} />
+                    <span key={c} className={`size-[5px] rounded-full ${CATEGORY_DOT[c]}`} />
                   ))}
                 </span>
               </button>

@@ -17,8 +17,8 @@ export function ExerciseManager() {
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   // 영상을 펼친 종목. 한 번에 하나만 펼친다.
   const [previewId, setPreviewId] = useState<string | null>(null);
-  // 삭제를 누른 종목과 그 종목을 쓴 기록 수
-  const [deleteTarget, setDeleteTarget] = useState<{ exercise: Exercise; uses: number } | null>(null);
+  // 삭제를 누른 종목과 그 종목을 쓴 기록·타이머 수
+  const [deleteTarget, setDeleteTarget] = useState<{ exercise: Exercise; uses: number; timers: number } | null>(null);
 
   const add = () => {
     const r = api.addExercise({ name, category, kind });
@@ -34,13 +34,14 @@ export function ExerciseManager() {
   // 삭제: 기록에 쓰이지 않았으면 삭제 확인, 쓰였으면 삭제할 수 없다고 알리고 숨기기를 권한다
   const askDelete = (exercise: Exercise) => {
     const check = checkExerciseDelete(store, exercise.id);
-    setDeleteTarget({ exercise, uses: !check.ok && check.reason === "in-use" ? check.uses : 0 });
+    const inUse = !check.ok && check.reason === "in-use";
+    setDeleteTarget({ exercise, uses: inUse ? check.uses : 0, timers: inUse ? check.timers : 0 });
   };
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    const { exercise, uses } = deleteTarget;
+    const { exercise, uses, timers } = deleteTarget;
     setDeleteTarget(null);
-    if (uses > 0) {
+    if (uses > 0 || timers > 0) {
       if (!exercise.archived) toggle(exercise.id, true);
       return;
     }
@@ -49,7 +50,7 @@ export function ExerciseManager() {
     if (previewId === exercise.id) setPreviewId(null);
     setMessage({ text: `${exercise.name}을(를) 삭제했습니다.`, error: false });
   };
-  const deleteDialog = deleteTarget && deleteDialogText(deleteTarget.exercise, deleteTarget.uses);
+  const deleteDialog = deleteTarget && deleteDialogText(deleteTarget.exercise, deleteTarget.uses, deleteTarget.timers);
 
   return (
     <div>
@@ -186,7 +187,7 @@ export function ExerciseManager() {
         title={deleteDialog?.title ?? ""}
         message={deleteDialog?.message ?? ""}
         confirmLabel={deleteDialog?.confirmLabel ?? ""}
-        destructive={deleteTarget?.uses === 0}
+        destructive={deleteTarget?.uses === 0 && deleteTarget.timers === 0}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -194,11 +195,12 @@ export function ExerciseManager() {
   );
 }
 
-function deleteDialogText(exercise: Exercise, uses: number): { title: string; message: string; confirmLabel: string } {
-  if (uses === 0) {
+function deleteDialogText(exercise: Exercise, uses: number, timers: number): { title: string; message: string; confirmLabel: string } {
+  if (uses === 0 && timers === 0) {
     return { title: `${exercise.name}을(를) 삭제할까요?`, message: "삭제한 종목은 되돌릴 수 없습니다.", confirmLabel: "삭제" };
   }
-  const why = `이 종목을 쓴 기록이 ${uses}개 있어 삭제할 수 없습니다. 기록을 지키려면 숨겨 두세요.`;
+  const where = [uses > 0 ? `기록 ${uses}개` : null, timers > 0 ? `타이머 ${timers}개` : null].filter(Boolean).join(", ");
+  const why = `이 종목을 쓴 ${where}가 있어 삭제할 수 없습니다. 지키려면 숨겨 두세요.`;
   return exercise.archived
     ? { title: "삭제할 수 없습니다", message: `${why} 이미 숨긴 종목입니다.`, confirmLabel: "확인" }
     : { title: "삭제할 수 없습니다", message: `${why} 지금 숨길까요?`, confirmLabel: "숨기기" };

@@ -9,6 +9,11 @@ import { chestStretch } from "./cheststretch";
 import { childsPose } from "./childspose";
 import { crunch } from "./crunch";
 import { cycling } from "./cycling";
+import { dbBenchPress } from "./dbbenchpress";
+import { dbKickback } from "./dbkickback";
+import { dbLateralRaise } from "./dblateralraise";
+import { dbRow } from "./dbrow";
+import { dbShoulderPress } from "./dbshoulderpress";
 import { deadBug } from "./deadbug";
 import { deadlift } from "./deadlift";
 import { dips } from "./dips";
@@ -18,6 +23,11 @@ import { hamstring } from "./hamstring";
 import { hipFlexorStretch } from "./hipflexor";
 import { hollowHold } from "./hollowhold";
 import { jumpRope } from "./jumprope";
+import { kbDeadlift } from "./kbdeadlift";
+import { kbGobletSquat } from "./kbgobletsquat";
+import { kbPress } from "./kbpress";
+import { kbRow } from "./kbrow";
+import { kbSwing } from "./kbswing";
 import { latPulldown } from "./latpulldown";
 import { legPress } from "./legpress";
 import { legRaise } from "./legraise";
@@ -52,7 +62,19 @@ export const VIDEO_EXERCISES: readonly ExerciseVideoDef[] = [
   barbellRow,
   latPulldown,
   legPress,
+  // #케틀벨
+  kbSwing,
+  kbGobletSquat,
+  kbDeadlift,
+  kbRow,
+  kbPress,
+  // #덤벨
   dumbbellCurl,
+  dbShoulderPress,
+  dbBenchPress,
+  dbRow,
+  dbLateralRaise,
+  dbKickback,
   // #맨몸운동
   pushup,
   pullUp,

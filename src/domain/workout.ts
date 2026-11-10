@@ -1,4 +1,4 @@
-import { isValidDateStr, type DateStr } from "./date";
+import { isValidDateStr, isValidTimeStr, minutesBetween, type DateStr } from "./date";
 import { createId } from "./id";
 import { LIMITS, MEMO_MAX, withinLimit, type Entry, type Exercise, type Limit, type Workout } from "./types";
 
@@ -17,6 +17,9 @@ export type WorkoutDraft = {
   id: string;
   date: string;
   createdAt: string;
+  /** 운동 시작·종료 시간("HH:MM" 또는 빈 값) */
+  startTime: string;
+  endTime: string;
   durationMin: string;
   memo: string;
   entries: EntryDraft[];
@@ -42,7 +45,7 @@ const valueOf = (raw: string, limit: Limit): number | null => {
 };
 
 export function newWorkoutDraft(date: DateStr, now: Date): WorkoutDraft {
-  return { id: createId(), date, createdAt: now.toISOString(), durationMin: "", memo: "", entries: [] };
+  return { id: createId(), date, createdAt: now.toISOString(), startTime: "", endTime: "", durationMin: "", memo: "", entries: [] };
 }
 
 const numToStr = (n: number | undefined) => (n === undefined ? "" : String(n));
@@ -52,6 +55,8 @@ export function draftFromWorkout(w: Workout): WorkoutDraft {
     id: w.id,
     date: w.date,
     createdAt: w.createdAt,
+    startTime: w.startTime ?? "",
+    endTime: w.endTime ?? "",
     durationMin: numToStr(w.durationMin),
     memo: w.memo ?? "",
     entries: w.entries.map((e): EntryDraft => {
@@ -160,6 +165,16 @@ export function hasCompletedSets(entry: EntryDraft): boolean {
   return persistEntry(entry) !== null;
 }
 
+/**
+ * 시작·종료 시간으로 계산한 총 운동 시간(분). 둘 중 하나가 없거나 형식이 틀렸거나,
+ * 계산값이 기록 시간 범위(1~1440분)를 벗어나면(같은 시각 = 0분) null이다. 종료가 더 이르면 자정을 넘긴 것으로 본다.
+ */
+export function durationFromTimes(start: string, end: string): number | null {
+  if (!isValidTimeStr(start) || !isValidTimeStr(end)) return null;
+  const min = minutesBetween(start, end);
+  return withinLimit(min, LIMITS.workoutDurationMin) ? min : null;
+}
+
 export function toPersistable(
   d: WorkoutDraft,
 ): { ok: true; workout: Workout } | { ok: false; reason: "no-entries" | "invalid-date" } {
@@ -168,7 +183,10 @@ export function toPersistable(
   if (entries.length === 0) return { ok: false, reason: "no-entries" };
 
   const workout: Workout = { id: d.id, date: d.date, createdAt: d.createdAt, entries };
-  const durationMin = valueOf(d.durationMin, LIMITS.workoutDurationMin);
+  if (isValidTimeStr(d.startTime)) workout.startTime = d.startTime;
+  if (isValidTimeStr(d.endTime)) workout.endTime = d.endTime;
+  // 시작·종료가 모두 있으면 그 차이가 총 운동 시간이다. 아니면 직접 입력한 값을 쓴다.
+  const durationMin = durationFromTimes(d.startTime, d.endTime) ?? valueOf(d.durationMin, LIMITS.workoutDurationMin);
   if (durationMin !== null) workout.durationMin = durationMin;
   if (d.memo.trim() !== "") workout.memo = d.memo.slice(0, MEMO_MAX);
   return { ok: true, workout };

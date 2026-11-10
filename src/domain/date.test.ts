@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  isValidTimeStr,
+  minutesBetween,
+  toTimeStr,
   isValidDateStr,
   monthGrid,
   monthRange,
@@ -69,5 +72,27 @@ describe("date", () => {
   it("weekdayKo", () => {
     expect(weekdayKo("2026-11-09")).toBe("월");
     expect(weekdayKo("2026-11-15")).toBe("일");
+  });
+});
+
+describe("시각(HH:MM)", () => {
+  it("toTimeStr: 현지 시각을 24시간 HH:MM으로", () => {
+    expect(toTimeStr(new Date(2026, 10, 10, 7, 5))).toBe("07:05");
+    expect(toTimeStr(new Date(2026, 10, 10, 23, 59, 59))).toBe("23:59");
+  });
+
+  it("isValidTimeStr", () => {
+    expect(isValidTimeStr("00:00")).toBe(true);
+    expect(isValidTimeStr("23:59")).toBe(true);
+    expect(isValidTimeStr("24:00")).toBe(false);
+    expect(isValidTimeStr("7:05")).toBe(false);
+    expect(isValidTimeStr("07:60")).toBe(false);
+    expect(isValidTimeStr("")).toBe(false);
+  });
+
+  it("minutesBetween: 종료가 시작보다 이르면 자정을 넘긴 것으로 본다", () => {
+    expect(minutesBetween("07:10", "08:25")).toBe(75);
+    expect(minutesBetween("23:30", "00:40")).toBe(70);
+    expect(minutesBetween("08:00", "08:00")).toBe(0);
   });
 });

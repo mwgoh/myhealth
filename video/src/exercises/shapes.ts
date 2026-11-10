@@ -41,3 +41,16 @@ export const beam = (a: Vec, b: Vec, width = 10, paint: Paint = "equip"): Shape 
 
 /** 손으로 잡는 손잡이 끝 */
 export const grip = (c: Vec, r = 8): Shape => ({ kind: "circle", c, r, fill: "hub", front: true });
+
+/**
+ * 케틀벨: 손잡이 고리는 손에, 분류 색 몸통은 손에서 hangDeg 방향으로 18px.
+ * 늘어뜨리면 -90°(아래), 스윙처럼 팔을 따라 뻗으면 팔 방향을 준다.
+ */
+export const kettlebell = (hand: Vec, hangDeg = -90, front = false): Shape[] => {
+  const r = (hangDeg * Math.PI) / 180;
+  const c = { x: hand.x + 18 * Math.cos(r), y: hand.y - 18 * Math.sin(r) };
+  return [
+    { kind: "circle", c, r: 15, fill: "accent", front },
+    { kind: "circle", c: hand, r: 7, stroke: "hub", width: 4, front },
+  ];
+};

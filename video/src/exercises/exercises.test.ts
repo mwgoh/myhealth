@@ -3,7 +3,9 @@ import { SEED_EXERCISES } from "../app-data";
 import { angleOf, dist, lowPoints, SEG, segments, type Pose, type Vec } from "../figure/geometry";
 import { GROUND_Y, HEADER_BOTTOM } from "../layout";
 import { mainFrames } from "../scenes/counter";
+import { BENCH } from "./benchpress";
 import { BIRD_DOG } from "./birddog";
+import { DB_ROW } from "./dbrow";
 import { BURPEE_HANDS } from "./burpee";
 import { CALF } from "./calfstretch";
 import { CAT_COW } from "./catcow";
@@ -437,5 +439,66 @@ describe("종목 제약: #유산소", () => {
     const handYs = poses.slice(0, 40).map((p) => p.near.hand.y - p.shoulder.y);
     expect(Math.min(...handYs)).toBeLessThan(-100);
     expect(Math.max(...handYs)).toBeGreaterThan(100);
+  });
+});
+
+describe("종목 제약: #케틀벨·#덤벨", () => {
+  const ankles = (id: string) => {
+    const poses = allPoses(byId(id));
+    expectSame(poses.map((p) => p.near.ankle));
+    expectSame(poses.map((p) => p.far.ankle));
+    for (const p of poses) expect(onGround(p.near.ankle) && onGround(p.far.ankle), id).toBe(true);
+    return poses;
+  };
+
+  it("선 자세 종목은 두 발목이 바닥에 고정된다", () => {
+    for (const id of ["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-db-shoulder-press", "seed-db-lateral-raise", "seed-db-kickback"]) {
+      ankles(id);
+    }
+  });
+
+  it("케틀벨 스윙: 맨 위에서 벨(손)이 가슴 높이까지 온다", () => {
+    const top = byId("seed-kb-swing").pose(30);
+    expect(Math.abs(top.near.hand.y - top.shoulder.y)).toBeLessThan(30);
+    expect(top.near.hand.x).toBeGreaterThan(top.shoulder.x + 100);
+  });
+
+  it("고블릿 스쿼트: 벨을 가슴 앞에 붙이고 앉는다", () => {
+    for (const p of allPoses(byId("seed-kb-goblet-squat"))) expect(dist(p.near.hand, p.shoulder)).toBeLessThan(70);
+  });
+
+  it("케틀벨 데드리프트: 시작할 때 벨 몸통 아래끝이 바닥에 닿는다", () => {
+    const p = byId("seed-kb-deadlift").pose(0);
+    // 손잡이(손)에서 몸통 중심까지 18px, 몸통 반지름 15px, 바닥선 위끝은 GROUND_Y + 7
+    expect(Math.abs(p.near.hand.y + 18 + 15 - (GROUND_Y + 7))).toBeLessThan(0.5);
+  });
+
+  it("케틀벨 원암 로우: 받치는 손은 무릎 위에 있다", () => {
+    for (const p of ankles("seed-kb-row")) expect(dist(p.far.hand, p.far.knee)).toBeLessThan(20);
+  });
+
+  it("덤벨 벤치프레스: 엉덩이와 두 발이 고정된다", () => {
+    const poses = allPoses(byId("seed-db-bench-press"));
+    expectAt(poses.map((p) => p.hip), BENCH.HIP, "엉덩이");
+    expectAt(poses.map((p) => p.near.ankle), BENCH.NEAR_ANKLE, "발목");
+  });
+
+  it("원암 덤벨 로우: 받치는 손과 무릎은 벤치에, 선 발은 바닥에 고정된다", () => {
+    const poses = allPoses(byId("seed-db-row"));
+    expectAt(poses.map((p) => p.far.hand), DB_ROW.HAND, "받치는 손");
+    expectAt(poses.map((p) => p.far.knee), DB_ROW.KNEE, "받치는 무릎");
+    expectAt(poses.map((p) => p.near.ankle), DB_ROW.ANKLE, "선 발");
+  });
+
+  it("덤벨 래터럴 레이즈: 맨 위에서 두 손이 어깨 높이(±10px)", () => {
+    const top = byId("seed-db-lateral-raise").pose(30);
+    expect(Math.abs(top.near.hand.y - top.shoulder.y)).toBeLessThanOrEqual(10);
+    expect(Math.abs(top.far.hand.y - top.shoulder.y)).toBeLessThanOrEqual(10);
+  });
+
+  it("덤벨 킥백: 위팔(팔꿈치)이 고정되고 아래팔만 뒤로 편다", () => {
+    const poses = allPoses(byId("seed-db-kickback"));
+    expectSame(poses.map((p) => p.near.elbow));
+    expectSame(poses.map((p) => p.far.elbow));
   });
 });

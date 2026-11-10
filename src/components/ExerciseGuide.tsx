@@ -32,7 +32,7 @@ export function ExerciseGuide({ exercise }: { exercise: Exercise }) {
  * 따라하기 영상. 패널이 열릴 때 생기며 소리 없이 반복 재생되고, 패널이 닫히면 요소가 사라져 멈춘다.
  * autoPlay 속성 대신 effect에서 재생해 '동작 줄이기' 설정이면 재생하지 않는다.
  */
-function GuideVideo({ src }: { src: string }) {
+export function GuideVideo({ src }: { src: string }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current;

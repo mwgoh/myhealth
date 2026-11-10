@@ -40,7 +40,11 @@ export function summarize(store: Store, range: { start: DateStr; end: DateStr })
           for (const set of e.sets) s.volumeKg += set.weightKg * set.reps;
           break;
         case "reps":
-          for (const set of e.sets) s.totalReps += set.reps;
+          // 맨몸 종목은 추가 중량(+kg)만큼만 볼륨에 넣는다. 몸무게는 앱이 모른다.
+          for (const set of e.sets) {
+            s.totalReps += set.reps;
+            s.volumeKg += set.reps * set.addedKg;
+          }
           break;
         case "timed":
           break; // 시간 세트는 일수에만 반영한다

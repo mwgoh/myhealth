@@ -56,3 +56,15 @@ export function workoutCategories(w: Workout, byId: ReadonlyMap<string, Exercise
   const used = new Set(w.entries.map((e) => byId.get(e.exerciseId)?.category));
   return CATEGORIES.filter((c) => used.has(c));
 }
+
+/**
+ * 기록 카드의 운동 시간 줄. 시작·종료가 있으면 "07:10–08:25 · 1시간 15분",
+ * 하나만 있으면 "07:10 시작"/"08:25 종료", 시간 없이 총 시간만 있으면 "45분". 아무것도 없으면 null.
+ */
+export function workoutTimeText(w: Workout): string | null {
+  const range =
+    w.startTime && w.endTime ? `${w.startTime}–${w.endTime}` : w.startTime ? `${w.startTime} 시작` : w.endTime ? `${w.endTime} 종료` : null;
+  const duration = w.durationMin === undefined ? null : formatDuration(w.durationMin);
+  if (range && duration) return `${range} · ${duration}`;
+  return range ?? duration;
+}

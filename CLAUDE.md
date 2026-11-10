@@ -18,7 +18,7 @@
 | `npm test -- date` | 파일 경로에 `date`가 들어간 테스트만 실행. 여러 개는 `npm test -- id seed` |
 | `npm run test:watch` | 감시 모드 |
 | `npm run lint` | ESLint. 이 PC에서 3분 넘게 걸리므로 timeout을 넉넉히 둔다 |
-| `npm run build` | 정적 사이트 생성. `out/`에 `index.html`, `calendar.html`, `stats.html`, `settings.html`, `workout.html`이 생긴다 |
+| `npm run build` | 정적 사이트 생성. `out/`에 `index.html`, `calendar.html`, `stats.html`, `settings.html`, `workout.html`, `timer.html`이 생긴다 |
 | `npx next typegen && npx tsc --noEmit` | 빌드 없이 타입 검사. `LayoutProps` 같은 전역 타입은 `next dev`·`next build`·`next typegen`이 만든다 |
 
 - `npm start`는 `next start`가 아니라 `serve`로 `out/`을 연다. `next start`는 `output: 'export'` 설정에서 오류로 끝난다. 빌드를 먼저 해야 한다.
@@ -28,12 +28,18 @@
 
 ## 구조
 
-의존 방향은 `domain` → `storage` → `hooks` → `components`·`app` 한 방향이다.
+의존 방향은 `domain` → `storage`·`timer` → `hooks` → `components`·`app` 한 방향이다.
 
 - `src/domain/`: React와 무관한 순수 함수. 업무 규칙은 모두 여기에 둔다.
   - `types.ts`에 zod 스키마와 입력 범위 `LIMITS`가 함께 있다. 저장 데이터 검증(zod)과 편집 화면의 칸 검사(`workout.ts`의 `readField`)가 같은 `LIMITS`를 쓴다.
-  - `checkReferences`: 모든 기록이 존재하는 종목을 가리키고, `Entry.kind`가 그 종목의 `Exercise.kind`와 같은지 검사한다.
+  - `checkReferences`: 모든 기록과 타이머가 존재하는 종목을 가리키고, `Entry.kind`가 그 종목의 `Exercise.kind`와 같은지 검사한다.
+  - 분류는 7개다(`CATEGORIES` 순서: 근력, 케틀벨, 덤벨, 맨몸, 코어, 스트레칭, 유산소). 분류를 더하면 `globals.css`의 `--cat-*`, `CategoryChip`, 영상 프로젝트의 `layout.ts`도 함께 바꾼다.
   - 기본 종목은 `seed-*` 고정 ID다. 가이드 문구는 Store가 아니라 `seed.ts` 코드에 있어 백업 파일에 들어가지 않는다.
+  - 기본 종목은 처음 실행할 때만 복사되므로, `load()`·`replaceAll`이 `syncSeedExercises`로 빠진 기본 종목을 더하고 기존 기본 종목의 분류를 코드에 맞춘다. 같은 이름(공백·대소문자 무시)의 종목이 있으면 더하지 않고, 이름·측정 방식·숨김은 바꾸지 않는다. 바뀐 것이 있을 때만 저장한다.
+  - `timer.ts`: 타이머 설정(`TimerPlan`)과 범위(`TIMER_LIMITS`), 기본 프리셋(`preset-*`, 코드에만 있고 저장하지 않는다), 구간 펼치기(`buildSegments`), 위치 계산(`positionAt`), 안내 목록(`timerCues`·`cuesBetween`). `timer-run.ts`: 이전·다음 구간 건너뛰기.
+- `src/timer/`: 브라우저 전용 타이머 모듈. `speechSynthesis`·`AudioContext`·`navigator.wakeLock`은 이 폴더에서만 쓴다.
+  - `session.ts`가 진행 중인 타이머 하나를 모듈 상태로 가진다. 화면을 벗어나도 남고, 새로고침하면 사라진다. 흐른 시간은 `performance.now()` 차이로 더하고, 위치는 `positionAt`으로 계산한다.
+  - 시작·계속은 버튼 클릭 처리기 안에서 부른다. 아이폰은 사용자 조작 안에서 첫 소리를 내야 이후 소리를 허용한다.
 - `src/storage/store.ts`: `createWorkoutStore(storage)`는 `getItem`·`setItem`만 가진 객체를 주입받는다. 테스트에는 메모리 구현을 넣는다.
 - `src/storage/browser-store.ts`: localStorage(키 `workout-log`)에 연결한 싱글턴. `storage` 이벤트로 다른 탭의 변경을 다시 읽는다. `window.localStorage`는 이 파일에서만 쓴다.
 - `src/hooks/`: `useSyncExternalStore` 래퍼. React에 묶인 부분은 얇게 두고, 시간에 따라 동작하는 로직은 `debounced-saver.ts`, `today-clock.ts`처럼 순수 파일로 빼서 테스트한다.
@@ -50,10 +56,12 @@
   - 메모리 상태를 먼저 바꾸고 `setItem`을 부른다. 저장에 실패해도 화면의 입력은 남고 `failed`를 돌려준다.
   - `checkReferences`를 통과하지 못하는 Store는 쓰지 않는다. 쓰면 다시 읽을 때 손상으로 판정되어 모든 탭이 오류 화면으로 잠긴다.
   - `getItem` 자체가 예외를 던지면 기본 Store로 열되 쓰기를 막는다.
-  - `deleteExercise`는 직접 추가했고 기록에 쓰이지 않은 종목만 지운다(`domain/exercises.ts`의 `checkExerciseDelete`). 기본 종목과 기록에 쓰인 종목은 숨기기만 된다.
+  - `deleteExercise`는 직접 추가했고 기록·타이머에 쓰이지 않은 종목만 지운다(`domain/exercises.ts`의 `checkExerciseDelete`). 기본 종목과 쓰인 종목은 숨기기만 된다.
+  - 타이머는 `saveTimer`(같은 ID면 바꾸기)·`deleteTimer`로 쓴다. `Store.timers`는 선택 필드라 예전 데이터와 백업도 그대로 읽힌다.
 - **스키마를 바꿀 때 주의한다.** 데이터는 사용자 브라우저의 localStorage와 백업 JSON에만 있다.
   - `storeSchema`를 좁히거나 선택 필드를 필수로 바꾸면 기존 데이터가 `corrupt`로 판정되어 앱이 열리지 않는다.
   - 지금은 `version: 1`만 받고 이전 버전을 변환하는 코드가 없다.
+  - 선택 필드를 더하는 것은 호환된다(예: 2026-11-10의 `startTime`·`endTime`). zod 객체는 모르는 필드를 버리므로, 스키마에 넣지 않은 필드는 저장·백업에서 조용히 사라진다.
 
 ### 편집 화면 (`/workout`)
 
@@ -63,6 +71,13 @@
   - `workout/page.tsx`는 바뀐 `id`가 현재 초안의 `id`와 같으면 편집기를 다시 만들지 않는다. 다시 만들면 입력 중이던 미완성 세트가 사라진다.
   - 언마운트 중의 저장이면 주소를 바꾸지 않는다. 바꾸면 떠나려던 화면에서 편집 화면으로 끌려온다.
 - 기록을 삭제하기 전에 `autosave.cancel()`을 부른다. 부르지 않으면 언마운트 때의 저장이 삭제한 기록을 되살린다.
+
+### 타이머 화면 (`/timer`)
+
+- 한 페이지가 주소로 화면을 고른다: 목록(`/timer`), 편집(`?edit=<id|new>&from=<복사할 id>`), 실행(`?run=<id>`).
+- 목록의 "시작"은 `startSession`을 부른 뒤 실행 화면으로 간다. 실행 화면은 탭을 가리고 화면 전체를 덮는다.
+- 실행 화면을 떠나면(뒤로 가기 포함) 일시정지하고, 목록 맨 위의 "이어하기"로 돌아온다. 개발 모드의 StrictMode가 effect를 한 번 정리했다 다시 실행하므로 일시정지를 한 박자 미뤄 두고 다시 실행되면 취소한다(`TimerRun.tsx`의 `usePauseOnLeave`).
+- 편집기는 숫자 칸을 문자열로 가지고, 범위 검사는 `checkTimerPlan`을 쓴다. 프리셋은 고칠 수 없어 프리셋 ID로 편집을 열면 복사본을 만든다.
 
 ## 코드 규칙
 
@@ -85,7 +100,7 @@
 | `npm test` | 관절 계산, 카운터, 종목 제약(모든 프레임) 테스트 |
 | `npm run typecheck` | 타입 검사 |
 | `npm run stills [-- <폴더> [sheet-01 ...]]` | 자세 확인 시트 PNG(종목 4개 × 주요 장면 3개). 기본 위치 `video/out/stills` |
-| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만. 42개 전체는 수십 분 걸린다 |
+| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만. 52개 전체는 한 시간 가까이 걸린다 |
 | `npm run studio` | 브라우저 미리보기 (포트 3940) |
 
 - 렌더링용 내부 서버 포트는 3939로 고정했다. 기본값으로 두면 앱 서버가 3000번을 쓰고 있어도 Remotion이 3000번을 골라 앱 페이지에 연결된다.
@@ -103,7 +118,7 @@
   - `seed.ts`는 `./types`를 `import type`으로만 가져와야 한다. 값으로 가져오면 영상 번들에 zod가 들어간다.
   - 영상이 있는 종목의 문구를 바꾸면 영상을 다시 렌더링한다.
 - 분류 라벨과 색은 `src/layout.ts`에 복사본이 있다. `layout.test.ts`가 앱의 `types.ts`·`globals.css`와 같은지 확인한다.
-- 기본 종목 42개 모두 영상이 있다. 앱의 `src/domain/videos.ts`는 기본 종목 목록에서 영상 목록을 만들고, 앱 테스트가 `public/videos/`의 파일과 일치하는지 확인한다.
+- 기본 종목 52개 모두 영상이 있다. 앱의 `src/domain/videos.ts`는 기본 종목 목록에서 영상 목록을 만들고, 앱 테스트가 `public/videos/`의 파일과 일치하는지 확인한다.
 - 기본 종목을 추가하면 영상도 만들어야 앱 테스트가 통과한다.
   1. `src/exercises/`에 정의를 만들고 `VIDEO_EXERCISES`에 같은 순서로 등록한다.
   2. `exercises.test.ts`에 그 종목의 제약을 추가한다.

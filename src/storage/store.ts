@@ -1,6 +1,7 @@
 import { checkExerciseDelete, checkNewExerciseName, type DeleteCheck, type NameCheck } from "@/domain/exercises";
 import { createId } from "@/domain/id";
-import { createInitialStore } from "@/domain/seed";
+import { createInitialStore, syncSeedExercises } from "@/domain/seed";
+import type { TimerPlan } from "@/domain/timer";
 import { checkReferences, parseStore, type Category, type Exercise, type MeasureKind, type Store, type Workout } from "@/domain/types";
 
 export type StorageLike = {
@@ -35,6 +36,9 @@ export interface WorkoutStore {
   setExerciseArchived(id: string, archived: boolean): WriteResult;
   /** 기록에 쓰이지 않은 직접 추가 종목만 지운다. 기본 종목·기록에 쓰인 종목은 이유를 돌려준다(숨기기를 쓴다). */
   deleteExercise(id: string): DeleteExerciseResult;
+  /** 같은 id의 타이머가 있으면 바꾸고, 없으면 끝에 더한다 */
+  saveTimer(plan: TimerPlan): WriteResult;
+  deleteTimer(id: string): WriteResult;
   replaceAll(store: Store): WriteResult;
   resetAll(): WriteResult;
 }
@@ -100,8 +104,12 @@ export function createWorkoutStore(storage: StorageLike): WorkoutStore {
         return;
       }
       const parsed = parseStore(json);
-      if (parsed.ok) setState({ status: "ready", store: parsed.store });
-      else if (parsed.error === "unsupported-version") setState({ status: "unsupported-version", raw });
+      if (parsed.ok) {
+        // 나중에 코드에 더한 기본 종목을 채우고, 바뀌었을 때만 저장한다
+        const synced = syncSeedExercises(parsed.store);
+        if (synced === parsed.store) setState({ status: "ready", store: synced });
+        else persist(synced);
+      } else if (parsed.error === "unsupported-version") setState({ status: "unsupported-version", raw });
       else setState({ status: "corrupt", raw });
     },
 
@@ -132,7 +140,17 @@ export function createWorkoutStore(storage: StorageLike): WorkoutStore {
       return { ok: true, write: update((s) => ({ ...s, exercises: s.exercises.filter((e) => e.id !== id) })) };
     },
 
-    replaceAll: (next) => update(() => next),
+    saveTimer: (plan) =>
+      update((s) => {
+        const timers = s.timers ?? [];
+        const exists = timers.some((t) => t.id === plan.id);
+        return { ...s, timers: exists ? timers.map((t) => (t.id === plan.id ? plan : t)) : [...timers, plan] };
+      }),
+
+    deleteTimer: (id) => update((s) => ({ ...s, timers: (s.timers ?? []).filter((t) => t.id !== id) })),
+
+    // 예전 백업에도 새 기본 종목을 채운다
+    replaceAll: (next) => update(() => syncSeedExercises(next)),
 
     // 손상·새 버전 상태에서 빠져나오는 유일한 길이라 ready가 아니어도 허용한다
     resetAll: () => persist(createInitialStore()),

@@ -1,9 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { toTimeStr } from "@/domain/date";
+import { formatDuration } from "@/domain/format";
 import { LIMITS, MEMO_MAX, type Exercise } from "@/domain/types";
-import { appendExercises, hasCompletedSets, readField, toPersistable, withDate, type EntryDraft, type WorkoutDraft } from "@/domain/workout";
+import {
+  appendExercises,
+  durationFromTimes,
+  hasCompletedSets,
+  readField,
+  toPersistable,
+  withDate,
+  type EntryDraft,
+  type WorkoutDraft,
+} from "@/domain/workout";
 import { useAutosave, type SaveContext } from "@/hooks/useAutosave";
 import { useReadyStore } from "@/hooks/useStore";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -78,7 +89,8 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
     router.replace("/");
   };
 
-  const durationBad = readField(draft.durationMin, LIMITS.workoutDurationMin).kind === "invalid";
+  const autoDuration = durationFromTimes(draft.startTime, draft.endTime);
+  const durationBad = autoDuration === null && readField(draft.durationMin, LIMITS.workoutDurationMin).kind === "invalid";
 
   return (
     <div className="mx-auto max-w-md pb-[calc(2rem+env(safe-area-inset-bottom))]">
@@ -119,20 +131,32 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
               className="mt-1 min-h-11 w-full rounded-xl border border-line bg-surface px-2 text-base font-semibold text-ink"
             />
           </label>
-          <label className="text-sm text-muted">
-            총 운동 시간 (분, 선택)
-            <input
-              type="text"
-              inputMode="numeric"
-              value={draft.durationMin}
-              aria-invalid={durationBad}
-              onChange={(e) => update({ ...draft, durationMin: e.target.value })}
-              className={`mt-1 min-h-11 w-full rounded-xl border bg-surface px-2 text-right text-base font-semibold text-ink tabular-nums ${
-                durationBad ? "border-danger" : "border-line"
-              }`}
-            />
-            {durationBad && <span className="text-danger">{limitText(LIMITS.workoutDurationMin)}</span>}
-          </label>
+          {/* 시작·종료 시간이 모두 있으면 총 운동 시간은 자동 계산이고, 아니면 직접 입력한다 */}
+          {autoDuration !== null ? (
+            <div className="text-sm text-muted">
+              총 운동 시간 (자동)
+              <output className="mt-1 flex min-h-11 w-full items-center justify-end rounded-xl border border-line bg-bg px-2 text-base font-semibold text-ink tabular-nums">
+                {formatDuration(autoDuration)}
+              </output>
+            </div>
+          ) : (
+            <label className="text-sm text-muted">
+              총 운동 시간 (분, 선택)
+              <input
+                type="text"
+                inputMode="numeric"
+                value={draft.durationMin}
+                aria-invalid={durationBad}
+                onChange={(e) => update({ ...draft, durationMin: e.target.value })}
+                className={`mt-1 min-h-11 w-full rounded-xl border bg-surface px-2 text-right text-base font-semibold text-ink tabular-nums ${
+                  durationBad ? "border-danger" : "border-line"
+                }`}
+              />
+              {durationBad && <span className="text-danger">{limitText(LIMITS.workoutDurationMin)}</span>}
+            </label>
+          )}
+          <TimeField label="시작" value={draft.startTime} onChange={(startTime) => update({ ...draft, startTime })} />
+          <TimeField label="종료" value={draft.endTime} onChange={(endTime) => update({ ...draft, endTime })} />
         </div>
 
         {draft.entries.map((e, i) => (
@@ -191,6 +215,33 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
         }}
         onCancel={() => setRemoveIndex(null)}
       />
+    </div>
+  );
+}
+
+/** 운동 시작·종료 시간 입력. '지금'을 누르면 현재 시각이 들어간다(헬스장에서 시작·끝에 한 번씩). */
+function TimeField({ label, value, onChange }: { label: string; value: string; onChange(v: string): void }) {
+  const id = useId();
+  return (
+    <div className="text-sm text-muted">
+      <label htmlFor={id}>{label}</label>
+      <div className="mt-1 flex gap-1">
+        <input
+          id={id}
+          type="time"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface px-2 text-base font-semibold text-ink tabular-nums"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(toTimeStr(new Date()))}
+          aria-label={`${label} 시간을 지금으로`}
+          className="min-h-11 shrink-0 rounded-xl border border-line px-2 text-sm font-semibold text-ink"
+        >
+          지금
+        </button>
+      </div>
     </div>
   );
 }

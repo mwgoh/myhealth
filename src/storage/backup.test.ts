@@ -76,3 +76,13 @@ describe("backup", () => {
     }
   });
 });
+
+describe("backup: 타이머 (2026-11-10)", () => {
+  it("타이머가 들어간 백업도 그대로 왕복한다", () => {
+    const s: Store = {
+      ...sample(),
+      timers: [{ id: "t1", name: "하체 서킷", prepSec: 10, workSec: 40, restSec: 20, rounds: 3, roundRestSec: 60, exerciseIds: ["seed-air-squat"] }],
+    };
+    expect(parseBackup(serializeBackup(s))).toEqual({ ok: true, store: s });
+  });
+});

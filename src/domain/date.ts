@@ -77,3 +77,24 @@ export function monthGrid(year: number, month: number): (DateStr | null)[][] {
 export function weekdayKo(s: DateStr): string {
   return WEEKDAYS_KO[mustParse(s).getDay()];
 }
+
+/** "HH:MM" 형식의 24시간 현지 시각. 운동 시작·종료 시간에 쓴다. */
+export type TimeStr = string;
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+export function toTimeStr(d: Date): TimeStr {
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function isValidTimeStr(s: string): boolean {
+  return TIME_RE.test(s);
+}
+
+const toMinutes = (s: TimeStr) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3, 5));
+
+/** 시작부터 종료까지 분. 종료가 시작보다 이르면 자정을 넘긴 것으로 보고 하루를 더한다. 같으면 0. */
+export function minutesBetween(start: TimeStr, end: TimeStr): number {
+  const diff = toMinutes(end) - toMinutes(start);
+  return diff < 0 ? diff + 24 * 60 : diff;
+}

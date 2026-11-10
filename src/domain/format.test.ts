@@ -6,6 +6,7 @@ import {
   formatInt,
   formatKm,
   formatMonthLabel,
+  workoutTimeText,
   formatWeekLabel,
   workoutCategories,
   workoutSummaryText,
@@ -98,5 +99,20 @@ describe("기록 요약 문구", () => {
 
   it("workoutCategories는 CATEGORIES 순서이고 중복이 없다", () => {
     expect(workoutCategories(w3, byId)).toEqual(["bodyweight", "stretching"]);
+  });
+});
+
+describe("workoutTimeText", () => {
+  const base = { id: "w", date: "2026-11-10", createdAt: "2026-11-10T01:00:00.000Z", entries: [] };
+  it("시작·종료가 있으면 시간대와 총 운동 시간", () => {
+    expect(workoutTimeText({ ...base, startTime: "07:10", endTime: "08:25", durationMin: 75 })).toBe("07:10–08:25 · 1시간 15분");
+  });
+  it("하나만 있으면 시작 또는 종료 시각, 총 시간이 있으면 덧붙인다", () => {
+    expect(workoutTimeText({ ...base, startTime: "07:10" })).toBe("07:10 시작");
+    expect(workoutTimeText({ ...base, endTime: "08:25", durationMin: 40 })).toBe("08:25 종료 · 40분");
+  });
+  it("시간 없이 총 시간만 있는 예전 기록은 총 시간만, 아무것도 없으면 null", () => {
+    expect(workoutTimeText({ ...base, durationMin: 45 })).toBe("45분");
+    expect(workoutTimeText(base)).toBeNull();
   });
 });

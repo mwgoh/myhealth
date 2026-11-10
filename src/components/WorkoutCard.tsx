@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { parseDateStr, weekdayKo } from "@/domain/date";
-import { workoutCategories, workoutSummaryText } from "@/domain/format";
+import { workoutCategories, workoutSummaryText, workoutTimeText } from "@/domain/format";
 import type { Exercise, Workout } from "@/domain/types";
 import { CategoryChip } from "./CategoryChip";
 
@@ -9,6 +9,7 @@ type Props = { workout: Workout; byId: ReadonlyMap<string, Exercise> };
 /** 일지의 한 줄: 왼쪽에 날짜, 오른쪽에 분류와 종목 요약 */
 export function WorkoutCard({ workout, byId }: Props) {
   const day = parseDateStr(workout.date)?.getDate();
+  const time = workoutTimeText(workout);
   return (
     <Link href={`/workout?id=${workout.id}`} className="flex gap-4 px-4 py-3 active:bg-bg">
       <div className="w-10 shrink-0 text-center">
@@ -22,6 +23,7 @@ export function WorkoutCard({ workout, byId }: Props) {
           ))}
         </div>
         <p className="mt-1.5 leading-snug">{workoutSummaryText(workout, byId)}</p>
+        {time && <p className="mt-0.5 text-sm text-muted tabular-nums">{time}</p>}
         {workout.memo && <p className="mt-0.5 truncate text-sm text-muted">{workout.memo}</p>}
       </div>
     </Link>

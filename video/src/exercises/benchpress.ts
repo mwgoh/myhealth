@@ -1,7 +1,7 @@
-import { armIK, legIK, lerp, poseFromAngles, type Angles } from "../figure/geometry";
+import { armIK, legIK, lerp, poseFromAngles, type Angles, type Pose } from "../figure/geometry";
 import { repPhase, type RepsTiming } from "../scenes/counter";
 import { G, pt } from "./helpers";
-import { barbell, block } from "./shapes";
+import { barbell, block, type Shape } from "./shapes";
 import type { ExerciseVideoDef } from "./types";
 
 const timing: RepsTiming = { kind: "reps", reps: 10, goFrames: 60, returnFrames: 30 };
@@ -39,21 +39,30 @@ const barAt = (frame: number) => pt(BAR_X, lerp(BAR_TOP, BAR_BOTTOM, repPhase(ti
 
 const LEG_H = G + 7 - BENCH_TOP - 16;
 
+/** 벤치에 누워 두 발을 바닥에 둔 자세(팔은 호출하는 쪽이 IK로 붙인다). 덤벨 벤치프레스도 쓴다. */
+export function lyingOnBench(): Pose {
+  let p = poseFromAngles(HIP, LYING);
+  p = legIK(p, "near", NEAR_ANKLE, KNEE_UP, 180);
+  return legIK(p, "far", FAR_ANKLE, KNEE_UP, 180);
+}
+
+/** 벤치 판과 다리 */
+export const benchShapes = (): Shape[] => [
+  block(150, BENCH_TOP, 245, 16),
+  block(168, BENCH_TOP + 16, 12, LEG_H, "equipDark"),
+  block(365, BENCH_TOP + 16, 12, LEG_H, "equipDark"),
+];
+
+/** 테스트용 */
+export const BENCH = { HIP, NEAR_ANKLE, FAR_ANKLE };
+
 export const benchPress: ExerciseVideoDef = {
   id: "seed-bench-press",
   timing,
   pose(frame) {
     const bar = barAt(frame);
-    let p = poseFromAngles(HIP, LYING);
-    p = legIK(p, "near", NEAR_ANKLE, KNEE_UP, 180);
-    p = legIK(p, "far", FAR_ANKLE, KNEE_UP, 180);
-    p = armIK(p, "far", bar, ELBOW_DOWN);
+    const p = armIK(lyingOnBench(), "far", bar, ELBOW_DOWN);
     return armIK(p, "near", bar, ELBOW_DOWN);
   },
-  props: (frame) => [
-    block(150, BENCH_TOP, 245, 16),
-    block(168, BENCH_TOP + 16, 12, LEG_H, "equipDark"),
-    block(365, BENCH_TOP + 16, 12, LEG_H, "equipDark"),
-    ...barbell(barAt(frame)),
-  ],
+  props: (frame) => [...benchShapes(), ...barbell(barAt(frame))],
 };

@@ -52,7 +52,7 @@ describe("불러오기", () => {
   it("빈 저장소 → 기본 데이터를 만들어 저장한다", () => {
     const { st, storage } = loaded();
     const store = readyStore(st.getState());
-    expect(store.exercises).toHaveLength(42);
+    expect(store.exercises).toHaveLength(52);
     expect(JSON.parse(storage.raw()!)).toEqual(store);
   });
 
@@ -138,19 +138,19 @@ describe("쓰기", () => {
       ok: false,
       reason: "duplicate",
     });
-    const r = st.addExercise({ name: " 케틀벨 스윙 ", category: "strength", kind: "weighted" });
+    const r = st.addExercise({ name: " 배틀 로프 ", category: "strength", kind: "weighted" });
     expect(r).toMatchObject({
       ok: true,
       write: "saved",
-      exercise: { name: "케틀벨 스윙", category: "strength", kind: "weighted", archived: false },
+      exercise: { name: "배틀 로프", category: "strength", kind: "weighted", archived: false },
     });
     const saved: Store = JSON.parse(storage.raw()!);
-    expect(saved.exercises.at(-1)?.name).toBe("케틀벨 스윙");
+    expect(saved.exercises.at(-1)?.name).toBe("배틀 로프");
   });
 
   it("deleteExercise: 기록에 쓰이지 않은 직접 추가 종목만 지운다", () => {
     const { st, storage } = loaded();
-    const added = st.addExercise({ name: "케틀벨 스윙", category: "strength", kind: "weighted" });
+    const added = st.addExercise({ name: "배틀 로프", category: "strength", kind: "weighted" });
     if (!added.ok) throw new Error("추가 실패");
     expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: true, write: "saved" });
     expect(readyStore(st.getState()).exercises.some((e) => e.id === added.exercise.id)).toBe(false);
@@ -160,12 +160,12 @@ describe("쓰기", () => {
 
   it("deleteExercise: 기본 종목과 기록에 쓰인 종목은 지우지 않고 이유를 알려준다", () => {
     const { st, storage } = loaded();
-    const added = st.addExercise({ name: "케틀벨 스윙", category: "strength", kind: "timed" });
+    const added = st.addExercise({ name: "배틀 로프", category: "strength", kind: "timed" });
     if (!added.ok) throw new Error("추가 실패");
     st.upsertWorkout({ ...workout("w1"), entries: [{ id: "e", exerciseId: added.exercise.id, kind: "timed", sets: [{ seconds: 30 }] }] });
     const before = storage.setCalls;
     expect(st.deleteExercise("seed-plank")).toEqual({ ok: false, reason: "seed" });
-    expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: false, reason: "in-use", uses: 1 });
+    expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: false, reason: "in-use", uses: 1, timers: 0 });
     expect(storage.setCalls).toBe(before);
     expect(readyStore(st.getState()).exercises.some((e) => e.id === added.exercise.id)).toBe(true);
   });
@@ -193,7 +193,7 @@ describe("쓰기", () => {
   it("resetAll은 corrupt에서도 동작한다", () => {
     const { st, storage } = loaded(memoryStorage("{bad json"));
     expect(st.resetAll()).toBe("saved");
-    expect(readyStore(st.getState()).exercises).toHaveLength(42);
+    expect(readyStore(st.getState()).exercises).toHaveLength(52);
     expect(JSON.parse(storage.raw()!)).toEqual(createInitialStore());
   });
 });
@@ -234,5 +234,75 @@ describe("상태 객체", () => {
     storage.put(JSON.stringify({ ...createInitialStore(), workouts: [workout("other-tab")] }));
     st.load();
     expect(readyStore(st.getState()).workouts.map((w) => w.id)).toEqual(["other-tab"]);
+  });
+});
+
+describe("기본 종목 채우기 (2026-11-10)", () => {
+  /** 2026-11-09 형식: 기본 종목 42개, 덤벨컬은 #근력운동 */
+  function oldFormat(): Store {
+    const s = createInitialStore();
+    const added = new Set(["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-db-shoulder-press", "seed-db-bench-press", "seed-db-row", "seed-db-lateral-raise", "seed-db-kickback"]);
+    return {
+      ...s,
+      exercises: s.exercises.filter((e) => !added.has(e.id)).map((e) => (e.id === "seed-dumbbell-curl" ? { ...e, category: "strength" as const } : e)),
+    };
+  }
+
+  it("예전 데이터를 불러오면 새 기본 종목이 채워지고 저장된다", () => {
+    const storage = memoryStorage(JSON.stringify(oldFormat()));
+    const { st } = loaded(storage);
+    const store = readyStore(st.getState());
+    expect(store.exercises).toHaveLength(52);
+    expect(store.exercises.find((e) => e.id === "seed-dumbbell-curl")?.category).toBe("dumbbell");
+    const saved: Store = JSON.parse(storage.raw()!);
+    expect(saved.exercises).toHaveLength(52);
+  });
+
+  it("이미 최신이면 다시 저장하지 않는다", () => {
+    const storage = memoryStorage(JSON.stringify(createInitialStore()));
+    loaded(storage);
+    expect(storage.setCalls).toBe(0);
+  });
+
+  it("손상된 데이터는 건드리지 않는다", () => {
+    const storage = memoryStorage("{망가짐");
+    const { st } = loaded(storage);
+    expect(st.getState().status).toBe("corrupt");
+    expect(storage.setCalls).toBe(0);
+  });
+
+  it("예전 백업을 가져와도(replaceAll) 새 기본 종목이 채워진다", () => {
+    const { st } = loaded();
+    expect(st.replaceAll(oldFormat())).toBe("saved");
+    expect(readyStore(st.getState()).exercises).toHaveLength(52);
+  });
+});
+
+describe("타이머 저장 (2026-11-10)", () => {
+  const plan = { id: "t1", name: "하체 서킷", prepSec: 10, workSec: 40, restSec: 20, rounds: 3, roundRestSec: 60, exerciseIds: ["seed-air-squat"] };
+
+  it("saveTimer: 없으면 추가, 같은 id면 교체하고 저장소에 기록한다", () => {
+    const { st, storage } = loaded();
+    expect(st.saveTimer(plan)).toBe("saved");
+    expect(st.saveTimer({ ...plan, name: "하체" })).toBe("saved");
+    expect(readyStore(st.getState()).timers).toEqual([{ ...plan, name: "하체" }]);
+    const saved: Store = JSON.parse(storage.raw()!);
+    expect(saved.timers).toEqual([{ ...plan, name: "하체" }]);
+  });
+
+  it("deleteTimer", () => {
+    const { st } = loaded();
+    st.saveTimer(plan);
+    st.saveTimer({ ...plan, id: "t2" });
+    expect(st.deleteTimer("t1")).toBe("saved");
+    expect(readyStore(st.getState()).timers?.map((t) => t.id)).toEqual(["t2"]);
+  });
+
+  it("타이머에 쓰인 직접 추가 종목은 지우지 않는다", () => {
+    const { st } = loaded();
+    const added = st.addExercise({ name: "배틀 로프", category: "cardio", kind: "timed" });
+    if (!added.ok) throw new Error("추가 실패");
+    st.saveTimer({ ...plan, exerciseIds: [added.exercise.id] });
+    expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: false, reason: "in-use", uses: 0, timers: 1 });
   });
 });

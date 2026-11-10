@@ -3,6 +3,8 @@ import type { Category, Exercise, MeasureKind, Store } from "./types";
 
 const DEFAULT_KIND: Record<Category, MeasureKind> = {
   strength: "weighted",
+  kettlebell: "weighted",
+  dumbbell: "weighted",
   bodyweight: "reps",
   core: "reps",
   stretching: "timed",
@@ -76,15 +78,16 @@ export function exerciseUseCount(store: Store, id: string): number {
 export type DeleteCheck =
   | { ok: true }
   | { ok: false; reason: "seed" | "not-found" }
-  | { ok: false; reason: "in-use"; uses: number };
+  | { ok: false; reason: "in-use"; uses: number; timers: number };
 
 /**
- * 종목을 삭제할 수 있는지. 직접 추가했고 어떤 기록에도 쓰이지 않은 종목만 삭제할 수 있다.
+ * 종목을 삭제할 수 있는지. 직접 추가했고 어떤 기록·타이머에도 쓰이지 않은 종목만 삭제할 수 있다.
  * 기록에 쓰인 종목을 지우면 그 기록이 없는 종목을 가리켜 Store 전체가 손상으로 판정되므로 막는다(숨기기를 쓴다).
  */
 export function checkExerciseDelete(store: Store, id: string): DeleteCheck {
   if (!store.exercises.some((e) => e.id === id)) return { ok: false, reason: "not-found" };
   if (isSeedExercise(id)) return { ok: false, reason: "seed" };
   const uses = exerciseUseCount(store, id);
-  return uses > 0 ? { ok: false, reason: "in-use", uses } : { ok: true };
+  const timers = (store.timers ?? []).filter((t) => t.exerciseIds.includes(id)).length;
+  return uses > 0 || timers > 0 ? { ok: false, reason: "in-use", uses, timers } : { ok: true };
 }

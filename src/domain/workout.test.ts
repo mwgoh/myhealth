@@ -5,6 +5,7 @@ import {
   addSet,
   appendExercises,
   draftFromWorkout,
+  durationFromTimes,
   hasCompletedSets,
   newEntryDraft,
   newWorkoutDraft,
@@ -22,6 +23,8 @@ function draftWith(entries: EntryDraft[], over: Partial<WorkoutDraft> = {}): Wor
     id: "w1",
     date: "2026-11-09",
     createdAt: "2026-11-09T01:00:00.000Z",
+    startTime: "",
+    endTime: "",
     durationMin: "",
     memo: "",
     entries,
@@ -230,5 +233,35 @@ describe("appendExercises", () => {
     const r = appendExercises(d, [seed("seed-squat")]);
     expect(r.draft).toBe(d);
     expect(r.added).toEqual([]);
+  });
+});
+
+describe("운동 시작·종료 시간", () => {
+  const keep: EntryDraft = { id: "e", exerciseId: "seed-plank", kind: "timed", sets: [{ seconds: "30" }] };
+
+  it("새 초안은 시간이 비어 있고, 저장된 기록의 시간은 초안으로 옮긴다", () => {
+    expect(newWorkoutDraft("2026-11-10", new Date(2026, 10, 10, 7))).toMatchObject({ startTime: "", endTime: "" });
+    const w = persisted(draftWith([keep], { startTime: "07:10", endTime: "08:25" }));
+    expect(draftFromWorkout(w)).toMatchObject({ startTime: "07:10", endTime: "08:25" });
+  });
+
+  it("시작·종료가 모두 있으면 총 운동 시간은 그 차이다(직접 입력한 값보다 우선)", () => {
+    const w = persisted(draftWith([keep], { startTime: "07:10", endTime: "08:25", durationMin: "30" }));
+    expect(w).toMatchObject({ startTime: "07:10", endTime: "08:25", durationMin: 75 });
+    expect(durationFromTimes("23:30", "00:40")).toBe(70);
+  });
+
+  it("하나만 있거나 같은 시각이면 시간은 저장하되 총 운동 시간은 직접 입력한 값을 쓴다", () => {
+    expect(persisted(draftWith([keep], { startTime: "07:10", durationMin: "45" }))).toMatchObject({ startTime: "07:10", durationMin: 45 });
+    const same = persisted(draftWith([keep], { startTime: "07:10", endTime: "07:10", durationMin: "" }));
+    expect(same.durationMin).toBeUndefined();
+    expect(durationFromTimes("07:10", "07:10")).toBeNull();
+    expect(durationFromTimes("07:10", "")).toBeNull();
+  });
+
+  it("형식이 틀린 시간은 저장하지 않는다", () => {
+    const w = persisted(draftWith([keep], { startTime: "7:1", endTime: "08:00" }));
+    expect(w.startTime).toBeUndefined();
+    expect(w.endTime).toBe("08:00");
   });
 });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkExerciseDelete, checkNewExerciseName, defaultKindFor, exerciseUseCount, isSeedExercise, pickerList } from "./exercises";
 import { createInitialStore } from "./seed";
-import { CATEGORIES, type Exercise, type Store, type Workout } from "./types";
+import { CATEGORIES, type Category, type Exercise, type Store, type Workout } from "./types";
 
 function workoutUsing(id: string, date: string, exerciseId: string): Workout {
   return {
@@ -14,7 +14,7 @@ function workoutUsing(id: string, date: string, exerciseId: string): Workout {
 
 describe("defaultKindFor", () => {
   it("분류별 기본 측정 방식", () => {
-    expect(CATEGORIES.map(defaultKindFor)).toEqual(["weighted", "reps", "reps", "timed", "cardio"]);
+    expect(CATEGORIES.map(defaultKindFor)).toEqual(["weighted", "weighted", "weighted", "reps", "reps", "timed", "cardio"]);
   });
 });
 
@@ -30,7 +30,7 @@ describe("checkNewExerciseName", () => {
   });
 
   it("새 이름은 통과한다", () => {
-    expect(checkNewExerciseName(ex, "케틀벨 스윙")).toEqual({ ok: true });
+    expect(checkNewExerciseName(ex, "배틀 로프")).toEqual({ ok: true });
   });
 
   it("대소문자를 무시하고 숨긴 종목의 중복을 알려준다", () => {
@@ -105,7 +105,7 @@ describe("pickerList", () => {
 });
 
 describe("checkExerciseDelete", () => {
-  const custom: Exercise = { id: "c1", name: "케틀벨 스윙", kind: "timed", category: "strength", archived: false };
+  const custom: Exercise = { id: "c1", name: "배틀 로프", kind: "timed", category: "strength", archived: false };
   const withCustom = (workouts: Workout[] = []): Store => {
     const s = createInitialStore();
     return { ...s, exercises: [...s.exercises, custom], workouts };
@@ -124,7 +124,7 @@ describe("checkExerciseDelete", () => {
   it("기록에 쓰인 종목은 삭제할 수 없고, 쓰인 기록 수를 알려준다", () => {
     const s = withCustom([workoutUsing("w1", "2026-11-01", "c1"), workoutUsing("w2", "2026-11-02", "c1"), workoutUsing("w3", "2026-11-03", "seed-plank")]);
     expect(exerciseUseCount(s, "c1")).toBe(2);
-    expect(checkExerciseDelete(s, "c1")).toEqual({ ok: false, reason: "in-use", uses: 2 });
+    expect(checkExerciseDelete(s, "c1")).toEqual({ ok: false, reason: "in-use", uses: 2, timers: 0 });
   });
 
   it("한 기록에 같은 종목이 여러 번 있어도 기록 1개로 센다", () => {
@@ -135,5 +135,26 @@ describe("checkExerciseDelete", () => {
 
   it("없는 종목", () => {
     expect(checkExerciseDelete(withCustom(), "nope")).toEqual({ ok: false, reason: "not-found" });
+  });
+});
+
+describe("분류 #케틀벨·#덤벨 (2026-11-10)", () => {
+  it("분류는 7개이고 두 분류의 기본 측정 방식은 무게×횟수", () => {
+    expect(CATEGORIES).toEqual(["strength", "kettlebell", "dumbbell", "bodyweight", "core", "stretching", "cardio"]);
+    expect(defaultKindFor("kettlebell" as Category)).toBe("weighted");
+    expect(defaultKindFor("dumbbell" as Category)).toBe("weighted");
+  });
+});
+
+describe("checkExerciseDelete: 타이머 (2026-11-10)", () => {
+  it("타이머에 쓰인 직접 추가 종목은 삭제할 수 없고, 쓰인 타이머 수를 알려준다", () => {
+    const s = createInitialStore();
+    const custom: Exercise = { id: "c9", name: "배틀 로프", kind: "timed", category: "cardio", archived: false };
+    const store: Store = {
+      ...s,
+      exercises: [...s.exercises, custom],
+      timers: [{ id: "t1", name: "서킷", prepSec: 10, workSec: 30, restSec: 10, rounds: 3, roundRestSec: 60, exerciseIds: ["c9"] }],
+    };
+    expect(checkExerciseDelete(store, "c9")).toEqual({ ok: false, reason: "in-use", uses: 0, timers: 1 });
   });
 });

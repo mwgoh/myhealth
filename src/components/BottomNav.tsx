@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 const TABS = [
   { href: "/", label: "기록" },
   { href: "/calendar", label: "달력" },
+  // 운동 중에 자주 여니 엄지가 닿기 쉬운 가운데에 둔다
+  { href: "/timer", label: "타이머" },
   { href: "/stats", label: "요약" },
   { href: "/settings", label: "설정" },
 ];

@@ -1,14 +1,18 @@
 import { z } from "zod";
-import { isValidDateStr } from "./date";
+import { isValidDateStr, isValidTimeStr } from "./date";
+import { checkTimerPlan, type TimerPlan } from "./timer";
 
 export const MEASURE_KINDS = ["weighted", "reps", "timed", "cardio"] as const;
 export type MeasureKind = (typeof MEASURE_KINDS)[number];
 
-export const CATEGORIES = ["strength", "bodyweight", "core", "stretching", "cardio"] as const;
+// 2026-11-10 #케틀벨·#덤벨 추가. 값을 더하는 것이라 예전 데이터·백업과 호환된다.
+export const CATEGORIES = ["strength", "kettlebell", "dumbbell", "bodyweight", "core", "stretching", "cardio"] as const;
 export type Category = (typeof CATEGORIES)[number];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
   strength: "#근력운동",
+  kettlebell: "#케틀벨",
+  dumbbell: "#덤벨",
   bodyweight: "#맨몸운동",
   core: "#코어운동",
   stretching: "#스트레칭",
@@ -82,19 +86,40 @@ export const entrySchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+// 운동 시작·종료 시간(현지 "HH:MM"). 2026-11-10에 더한 선택 필드라 예전 기록과 백업에는 없다.
+const timeSchema = z.string().refine(isValidTimeStr);
+
 export const workoutSchema = z.object({
   id: idSchema,
   date: z.string().refine(isValidDateStr),
   createdAt: z.iso.datetime(),
+  startTime: timeSchema.optional(),
+  endTime: timeSchema.optional(),
   durationMin: limited(LIMITS.workoutDurationMin).optional(),
   memo: z.string().max(MEMO_MAX).optional(),
   entries: z.array(entrySchema).min(1),
 });
 
+// 인터벌 타이머(2026-11-10 추가). 값 범위는 timer.ts의 checkTimerPlan 한 곳에서 검사한다.
+export const timerPlanSchema = z
+  .object({
+    id: idSchema,
+    name: z.string(),
+    prepSec: z.number(),
+    workSec: z.number(),
+    restSec: z.number(),
+    rounds: z.number(),
+    roundRestSec: z.number(),
+    exerciseIds: z.array(idSchema),
+  })
+  .refine((p: TimerPlan) => checkTimerPlan(p).length === 0);
+
 export const storeSchema = z.object({
   version: z.literal(1),
   exercises: z.array(exerciseSchema),
   workouts: z.array(workoutSchema),
+  // 선택 필드라 타이머가 없는 예전 데이터·백업도 그대로 읽힌다
+  timers: z.array(timerPlanSchema).optional(),
 });
 
 export type Exercise = z.infer<typeof exerciseSchema>;
@@ -116,7 +141,11 @@ export function parseStore(input: unknown): { ok: true; store: Store } | { ok: f
   if (!parsed.success) return { ok: false, error: "invalid-shape" };
   const store = parsed.data;
 
-  if (hasDuplicates(store.exercises.map((e) => e.id)) || hasDuplicates(store.workouts.map((w) => w.id))) {
+  if (
+    hasDuplicates(store.exercises.map((e) => e.id)) ||
+    hasDuplicates(store.workouts.map((w) => w.id)) ||
+    hasDuplicates((store.timers ?? []).map((t) => t.id))
+  ) {
     return { ok: false, error: "invalid-shape" };
   }
 
@@ -124,11 +153,12 @@ export function parseStore(input: unknown): { ok: true; store: Store } | { ok: f
   return refError ? { ok: false, error: refError } : { ok: true, store };
 }
 
-/** 모든 기록이 존재하는 종목을, 같은 측정 방식으로 가리키는지 검사한다 */
+/** 모든 기록이 존재하는 종목을 같은 측정 방식으로 가리키는지, 타이머가 존재하는 종목만 가리키는지 검사한다 */
 export function checkReferences(store: Store): "unknown-exercise" | "kind-mismatch" | null {
   const byId = new Map(store.exercises.map((e) => [e.id, e]));
   const entries = store.workouts.flatMap((w) => w.entries);
   if (entries.some((en) => !byId.has(en.exerciseId))) return "unknown-exercise";
+  if ((store.timers ?? []).some((t) => t.exerciseIds.some((id) => !byId.has(id)))) return "unknown-exercise";
   if (entries.some((en) => byId.get(en.exerciseId)!.kind !== en.kind)) return "kind-mismatch";
   return null;
 }

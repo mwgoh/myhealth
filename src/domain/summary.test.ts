@@ -48,10 +48,11 @@ describe("summarize", () => {
   it("주간 집계", () => {
     expect(summarize(fixture(), WEEK)).toEqual({
       workoutDays: 2,
-      categoryDays: { strength: 1, bodyweight: 1, core: 1, stretching: 1, cardio: 1 },
+      categoryDays: { strength: 1, kettlebell: 0, dumbbell: 0, bodyweight: 1, core: 1, stretching: 1, cardio: 1 },
       totalDurationMin: 90,
       missingDurationCount: 1,
-      volumeKg: 960,
+      // 벤치 무게×횟수 960 + 푸시업 15회×10kg 150
+      volumeKg: 1110,
       totalReps: 35,
       cardioDurationMin: 30,
       cardioDistanceKm: 5.2,
@@ -61,7 +62,7 @@ describe("summarize", () => {
   it("빈 기간은 모두 0", () => {
     expect(summarize(fixture(), { start: "2026-10-01", end: "2026-10-31" })).toEqual({
       workoutDays: 0,
-      categoryDays: { strength: 0, bodyweight: 0, core: 0, stretching: 0, cardio: 0 },
+      categoryDays: { strength: 0, kettlebell: 0, dumbbell: 0, bodyweight: 0, core: 0, stretching: 0, cardio: 0 },
       totalDurationMin: 0,
       missingDurationCount: 0,
       volumeKg: 0,
@@ -79,5 +80,27 @@ describe("summarize", () => {
 
   it("양 끝 날짜를 포함한다", () => {
     expect(summarize(fixture(), { start: "2026-11-11", end: "2026-11-16" }).workoutDays).toBe(2);
+  });
+});
+
+describe("총 볼륨", () => {
+  it("무게×횟수와 맨몸 횟수×추가 중량(+kg)을 모두 더한다. 추가 중량이 0이면 0이다", () => {
+    const s: Store = {
+      ...createInitialStore(),
+      workouts: [
+        {
+          id: "v",
+          date: "2026-11-10",
+          createdAt: "2026-11-10T01:00:00.000Z",
+          entries: [
+            { id: "a", exerciseId: "seed-squat", kind: "weighted", sets: [{ weightKg: 60, reps: 5 }] },
+            { id: "b", exerciseId: "seed-pull-up", kind: "reps", sets: [{ reps: 8, addedKg: 5 }, { reps: 10, addedKg: 0 }] },
+          ],
+        },
+      ],
+    };
+    const r = summarize(s, { start: "2026-11-10", end: "2026-11-10" });
+    expect(r.volumeKg).toBe(60 * 5 + 8 * 5);
+    expect(r.totalReps).toBe(18);
   });
 });

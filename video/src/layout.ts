@@ -36,6 +36,8 @@ export const HEADER_BOTTOM = 135;
 /** 앱 globals.css의 밝은 모드 분류 색(바벨 원판 색)과 같다. layout.test.ts가 비교한다. */
 export const CATEGORY_COLOR: Record<Category, string> = {
   strength: "#d7263d",
+  kettlebell: "#e8590c",
+  dumbbell: "#7048e8",
   bodyweight: "#1f5fbf",
   core: "#e0ac00",
   stretching: "#2e9e5b",
@@ -45,6 +47,8 @@ export const CATEGORY_COLOR: Record<Category, string> = {
 /** 앱 types.ts의 CATEGORY_LABEL과 같다. types.ts는 zod를 불러오므로 영상 번들에서는 복사본을 쓴다. */
 export const CATEGORY_LABEL: Record<Category, string> = {
   strength: "#근력운동",
+  kettlebell: "#케틀벨",
+  dumbbell: "#덤벨",
   bodyweight: "#맨몸운동",
   core: "#코어운동",
   stretching: "#스트레칭",
