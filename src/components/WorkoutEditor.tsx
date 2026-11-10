@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { LIMITS, MEMO_MAX, type Exercise } from "@/domain/types";
-import { hasCompletedSets, newEntryDraft, readField, toPersistable, withDate, type EntryDraft, type WorkoutDraft } from "@/domain/workout";
+import { appendExercises, hasCompletedSets, readField, toPersistable, withDate, type EntryDraft, type WorkoutDraft } from "@/domain/workout";
 import { useAutosave, type SaveContext } from "@/hooks/useAutosave";
 import { useReadyStore } from "@/hooks/useStore";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -24,8 +24,11 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [removeIndex, setRemoveIndex] = useState<number | null>(null);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
 
   const byId = useMemo(() => new Map(store.exercises.map((e) => [e.id, e])), [store.exercises]);
+  // 이 기록에 이미 들어 있는 종목. 종목 선택 창에서 다시 고를 수 없게 한다.
+  const addedIds = useMemo(() => new Set(draft.entries.map((e) => e.exerciseId)), [draft.entries]);
 
   const save = useCallback(
     (d: WorkoutDraft, ctx: SaveContext) => {
@@ -54,8 +57,13 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
   };
   const setEntry = (i: number, e: EntryDraft) => update({ ...draft, entries: draft.entries.map((x, j) => (j === i ? e : x)) });
   const removeEntry = (i: number) => update({ ...draft, entries: draft.entries.filter((_, j) => j !== i) });
-  const pick = (ex: Exercise) => {
-    update({ ...draft, entries: [...draft.entries, newEntryDraft(ex)] });
+  const pick = (exercises: Exercise[]) => {
+    // 이미 이 기록에 있는 종목은 다시 넣지 않는다
+    const { draft: next, added } = appendExercises(draft, exercises);
+    if (next !== draft) update(next);
+    // 방금 고른 종목 중 첫 번째 카드만 가이드(따라하기 영상)를 펼치고 그 카드로 스크롤한다.
+    // 여러 카드를 모두 펼치면 영상이 동시에 여러 개 재생된다.
+    setJustAddedId(added[0]?.id ?? null);
     setPickerOpen(false);
   };
 
@@ -134,6 +142,7 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
             exercise={byId.get(e.exerciseId)}
             onChange={(next) => setEntry(i, next)}
             onRemove={() => (hasCompletedSets(e) ? setRemoveIndex(i) : removeEntry(i))}
+            justAdded={e.id === justAddedId}
           />
         ))}
 
@@ -155,7 +164,12 @@ export function WorkoutEditor({ initialDraft, isNew }: Props) {
         </label>
       </div>
 
-      <ExercisePicker open={pickerOpen} onPick={pick} onClose={() => setPickerOpen(false)} />
+      <ExercisePicker
+        open={pickerOpen}
+        addedIds={addedIds}
+        onPick={pick}
+        onClose={() => setPickerOpen(false)}
+      />
       <ConfirmDialog
         open={confirmDelete}
         title="이 기록을 삭제할까요?"

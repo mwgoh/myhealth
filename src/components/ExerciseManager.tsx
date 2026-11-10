@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { defaultKindFor } from "@/domain/exercises";
-import { CATEGORIES, CATEGORY_LABEL, KIND_LABEL, MEASURE_KINDS, type Category, type MeasureKind } from "@/domain/types";
+import { checkExerciseDelete, defaultKindFor, isSeedExercise } from "@/domain/exercises";
+import { CATEGORIES, CATEGORY_LABEL, KIND_LABEL, MEASURE_KINDS, type Category, type Exercise, type MeasureKind } from "@/domain/types";
 import { useReadyStore } from "@/hooks/useStore";
 import { CATEGORY_DOT } from "./CategoryChip";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { ExerciseGuide, hasGuide } from "./ExerciseGuide";
 import { ADD_EXERCISE_ERROR } from "./ExercisePicker";
 
 export function ExerciseManager() {
@@ -13,6 +15,10 @@ export function ExerciseManager() {
   const [category, setCategory] = useState<Category>("strength");
   const [kind, setKind] = useState<MeasureKind>("weighted");
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  // 영상을 펼친 종목. 한 번에 하나만 펼친다.
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  // 삭제를 누른 종목과 그 종목을 쓴 기록 수
+  const [deleteTarget, setDeleteTarget] = useState<{ exercise: Exercise; uses: number } | null>(null);
 
   const add = () => {
     const r = api.addExercise({ name, category, kind });
@@ -24,6 +30,26 @@ export function ExerciseManager() {
   const toggle = (id: string, archived: boolean) => {
     if (api.setExerciseArchived(id, archived) === "failed") setMessage({ text: "저장하지 못했습니다.", error: true });
   };
+
+  // 삭제: 기록에 쓰이지 않았으면 삭제 확인, 쓰였으면 삭제할 수 없다고 알리고 숨기기를 권한다
+  const askDelete = (exercise: Exercise) => {
+    const check = checkExerciseDelete(store, exercise.id);
+    setDeleteTarget({ exercise, uses: !check.ok && check.reason === "in-use" ? check.uses : 0 });
+  };
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    const { exercise, uses } = deleteTarget;
+    setDeleteTarget(null);
+    if (uses > 0) {
+      if (!exercise.archived) toggle(exercise.id, true);
+      return;
+    }
+    const r = api.deleteExercise(exercise.id);
+    if (!r.ok || r.write === "failed") return setMessage({ text: "삭제하지 못했습니다.", error: true });
+    if (previewId === exercise.id) setPreviewId(null);
+    setMessage({ text: `${exercise.name}을(를) 삭제했습니다.`, error: false });
+  };
+  const deleteDialog = deleteTarget && deleteDialogText(deleteTarget.exercise, deleteTarget.uses);
 
   return (
     <div>
@@ -92,27 +118,88 @@ export function ExerciseManager() {
                 <span className="ml-auto text-sm font-normal text-muted">{list.length}개</span>
               </summary>
               <ul className="pb-2">
-                {list.map((e) => (
-                  <li key={e.id} className="flex items-center gap-2 px-4">
-                    <span className={`flex-1 ${e.archived ? "text-muted line-through" : ""}`}>
+                {list.map((e) => {
+                  const label = (
+                    <span className={e.archived ? "text-muted line-through" : ""}>
                       {e.name}
                       <span className="ml-2 text-sm text-muted no-underline">{KIND_LABEL[e.kind]}</span>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => toggle(e.id, !e.archived)}
-                      aria-label={`${e.name} ${e.archived ? "숨김 해제" : "숨기기"}`}
-                      className="min-h-11 px-2 text-sm font-semibold text-muted"
-                    >
-                      {e.archived ? "숨김 해제" : "숨기기"}
-                    </button>
-                  </li>
-                ))}
+                  );
+                  return (
+                    <li key={e.id} className="px-4">
+                      <div className="flex items-center gap-1">
+                        {/* 가이드가 있는 종목은 이름을 누르면 영상과 핵심 포인트를 펼친다 */}
+                        {hasGuide(e.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewId((id) => (id === e.id ? null : e.id))}
+                            aria-expanded={previewId === e.id}
+                            aria-label={`${e.name} 영상 ${previewId === e.id ? "닫기" : "보기"}`}
+                            className="flex min-h-11 flex-1 items-center gap-2 text-left"
+                          >
+                            <span className="w-4 shrink-0 text-muted" aria-hidden>
+                              {previewId === e.id ? "▾" : "▶"}
+                            </span>
+                            {label}
+                          </button>
+                        ) : (
+                          <span className="flex min-h-11 flex-1 items-center gap-2">
+                            <span className="w-4 shrink-0" aria-hidden />
+                            {label}
+                          </span>
+                        )}
+                        {!isSeedExercise(e.id) && (
+                          <button
+                            type="button"
+                            onClick={() => askDelete(e)}
+                            aria-label={`${e.name} 삭제`}
+                            className="min-h-11 px-2 text-sm font-semibold text-danger"
+                          >
+                            삭제
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggle(e.id, !e.archived)}
+                          aria-label={`${e.name} ${e.archived ? "숨김 해제" : "숨기기"}`}
+                          className="min-h-11 px-2 text-sm font-semibold text-muted"
+                        >
+                          {e.archived ? "숨김 해제" : "숨기기"}
+                        </button>
+                      </div>
+                      {previewId === e.id && (
+                        <div className="pb-2">
+                          <ExerciseGuide exercise={e} />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </details>
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={deleteDialog !== null}
+        title={deleteDialog?.title ?? ""}
+        message={deleteDialog?.message ?? ""}
+        confirmLabel={deleteDialog?.confirmLabel ?? ""}
+        destructive={deleteTarget?.uses === 0}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
+}
+
+function deleteDialogText(exercise: Exercise, uses: number): { title: string; message: string; confirmLabel: string } {
+  if (uses === 0) {
+    return { title: `${exercise.name}을(를) 삭제할까요?`, message: "삭제한 종목은 되돌릴 수 없습니다.", confirmLabel: "삭제" };
+  }
+  const why = `이 종목을 쓴 기록이 ${uses}개 있어 삭제할 수 없습니다. 기록을 지키려면 숨겨 두세요.`;
+  return exercise.archived
+    ? { title: "삭제할 수 없습니다", message: `${why} 이미 숨긴 종목입니다.`, confirmLabel: "확인" }
+    : { title: "삭제할 수 없습니다", message: `${why} 지금 숨길까요?`, confirmLabel: "숨기기" };
 }

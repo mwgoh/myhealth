@@ -3,6 +3,7 @@ import { SEED_EXERCISES } from "./seed";
 import { LIMITS, type Workout } from "./types";
 import {
   addSet,
+  appendExercises,
   draftFromWorkout,
   hasCompletedSets,
   newEntryDraft,
@@ -206,5 +207,28 @@ describe("withDate", () => {
 
   it("유효한 날짜면 바꾼다", () => {
     expect(withDate(draftWith([]), "2026-11-01").date).toBe("2026-11-01");
+  });
+});
+
+describe("appendExercises", () => {
+  it("고른 순서대로 종목 초안을 덧붙이고, 새로 붙은 초안을 돌려준다", () => {
+    const d = draftWith([]);
+    const { draft, added } = appendExercises(d, [seed("seed-squat"), seed("seed-plank")]);
+    expect(draft.entries.map((e) => e.exerciseId)).toEqual(["seed-squat", "seed-plank"]);
+    expect(added.map((e) => e.exerciseId)).toEqual(["seed-squat", "seed-plank"]);
+  });
+
+  it("이미 기록에 있는 종목과 같은 목록 안의 중복은 덧붙이지 않는다", () => {
+    const d = draftWith([newEntryDraft(seed("seed-squat"))]);
+    const { draft, added } = appendExercises(d, [seed("seed-squat"), seed("seed-plank"), seed("seed-plank")]);
+    expect(draft.entries.map((e) => e.exerciseId)).toEqual(["seed-squat", "seed-plank"]);
+    expect(added.map((e) => e.exerciseId)).toEqual(["seed-plank"]);
+  });
+
+  it("덧붙일 것이 없으면 같은 초안 객체를 돌려준다", () => {
+    const d = draftWith([newEntryDraft(seed("seed-squat"))]);
+    const r = appendExercises(d, [seed("seed-squat")]);
+    expect(r.draft).toBe(d);
+    expect(r.added).toEqual([]);
   });
 });

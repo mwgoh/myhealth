@@ -1,6 +1,6 @@
 import { monthGrid, type DateStr } from "@/domain/date";
 import { formatDateLabel } from "@/domain/format";
-import type { Category } from "@/domain/types";
+import { CATEGORY_LABEL, type Category } from "@/domain/types";
 import { CATEGORY_DOT } from "./CategoryChip";
 
 type Props = {
@@ -37,14 +37,15 @@ export function MonthGrid({ year, month, selected, today, marks, onSelect }: Pro
                 type="button"
                 onClick={() => onSelect(d)}
                 aria-pressed={isSelected}
-                aria-label={`${formatDateLabel(d)}${cats.length ? ", 운동함" : ""}`}
+                aria-label={`${formatDateLabel(d)}${cats.length ? `, ${cats.map((c) => CATEGORY_LABEL[c]).join(" ")}` : ""}`}
                 className={`m-0.5 flex min-h-12 flex-col items-center justify-center rounded-xl tabular-nums ${
                   isSelected ? "bg-ink font-bold text-bg" : d === today ? "font-bold ring-2 ring-ink ring-inset" : ""
                 }`}
               >
                 {Number(d.slice(8))}
+                {/* 분류는 최대 5개이고 점 5개(약 38px)가 칸 너비에 들어가므로 모두 그린다 */}
                 <span className="mt-0.5 flex h-1.5 gap-0.5">
-                  {cats.slice(0, 3).map((c) => (
+                  {cats.map((c) => (
                     <span key={c} className={`size-1.5 rounded-full ${CATEGORY_DOT[c]}`} />
                   ))}
                 </span>

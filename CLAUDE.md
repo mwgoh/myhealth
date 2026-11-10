@@ -50,6 +50,7 @@
   - 메모리 상태를 먼저 바꾸고 `setItem`을 부른다. 저장에 실패해도 화면의 입력은 남고 `failed`를 돌려준다.
   - `checkReferences`를 통과하지 못하는 Store는 쓰지 않는다. 쓰면 다시 읽을 때 손상으로 판정되어 모든 탭이 오류 화면으로 잠긴다.
   - `getItem` 자체가 예외를 던지면 기본 Store로 열되 쓰기를 막는다.
+  - `deleteExercise`는 직접 추가했고 기록에 쓰이지 않은 종목만 지운다(`domain/exercises.ts`의 `checkExerciseDelete`). 기본 종목과 기록에 쓰인 종목은 숨기기만 된다.
 - **스키마를 바꿀 때 주의한다.** 데이터는 사용자 브라우저의 localStorage와 백업 JSON에만 있다.
   - `storeSchema`를 좁히거나 선택 필드를 필수로 바꾸면 기존 데이터가 `corrupt`로 판정되어 앱이 열리지 않는다.
   - 지금은 `version: 1`만 받고 이전 버전을 변환하는 코드가 없다.

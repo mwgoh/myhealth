@@ -1,4 +1,4 @@
-import { checkNewExerciseName, type NameCheck } from "@/domain/exercises";
+import { checkExerciseDelete, checkNewExerciseName, type DeleteCheck, type NameCheck } from "@/domain/exercises";
 import { createId } from "@/domain/id";
 import { createInitialStore } from "@/domain/seed";
 import { checkReferences, parseStore, type Category, type Exercise, type MeasureKind, type Store, type Workout } from "@/domain/types";
@@ -23,6 +23,8 @@ export type AddExerciseResult =
   | { ok: true; exercise: Exercise; write: WriteResult }
   | Extract<NameCheck, { ok: false }>;
 
+export type DeleteExerciseResult = { ok: true; write: WriteResult } | Extract<DeleteCheck, { ok: false }>;
+
 export interface WorkoutStore {
   getState(): StoreState;
   subscribe(listener: () => void): () => void;
@@ -31,6 +33,8 @@ export interface WorkoutStore {
   deleteWorkout(id: string): WriteResult;
   addExercise(input: { name: string; category: Category; kind: MeasureKind }): AddExerciseResult;
   setExerciseArchived(id: string, archived: boolean): WriteResult;
+  /** 기록에 쓰이지 않은 직접 추가 종목만 지운다. 기본 종목·기록에 쓰인 종목은 이유를 돌려준다(숨기기를 쓴다). */
+  deleteExercise(id: string): DeleteExerciseResult;
   replaceAll(store: Store): WriteResult;
   resetAll(): WriteResult;
 }
@@ -120,6 +124,13 @@ export function createWorkoutStore(storage: StorageLike): WorkoutStore {
 
     setExerciseArchived: (id, archived) =>
       update((s) => ({ ...s, exercises: s.exercises.map((e) => (e.id === id ? { ...e, archived } : e)) })),
+
+    deleteExercise(id) {
+      if (state.status !== "ready") throw new Error("저장소가 준비되지 않았습니다");
+      const check = checkExerciseDelete(state.store, id);
+      if (!check.ok) return check;
+      return { ok: true, write: update((s) => ({ ...s, exercises: s.exercises.filter((e) => e.id !== id) })) };
+    },
 
     replaceAll: (next) => update(() => next),
 

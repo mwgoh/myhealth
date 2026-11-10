@@ -1,3 +1,4 @@
+import { SEED_EXERCISES } from "./seed";
 import type { Category, Exercise, MeasureKind, Store } from "./types";
 
 const DEFAULT_KIND: Record<Category, MeasureKind> = {
@@ -60,4 +61,30 @@ export function pickerList(store: Store, opts: { category: Category | "all"; que
     });
   const unused = visible.filter((e) => !lastUsed.has(e.id));
   return [...used, ...unused];
+}
+
+const SEED_IDS: ReadonlySet<string> = new Set(SEED_EXERCISES.map((e) => e.id));
+
+/** 앱이 처음부터 넣어 둔 기본 종목인가 */
+export const isSeedExercise = (id: string): boolean => SEED_IDS.has(id);
+
+/** 이 종목을 쓴 기록(Workout) 수. 한 기록에 여러 번 있어도 1로 센다. */
+export function exerciseUseCount(store: Store, id: string): number {
+  return store.workouts.filter((w) => w.entries.some((e) => e.exerciseId === id)).length;
+}
+
+export type DeleteCheck =
+  | { ok: true }
+  | { ok: false; reason: "seed" | "not-found" }
+  | { ok: false; reason: "in-use"; uses: number };
+
+/**
+ * 종목을 삭제할 수 있는지. 직접 추가했고 어떤 기록에도 쓰이지 않은 종목만 삭제할 수 있다.
+ * 기록에 쓰인 종목을 지우면 그 기록이 없는 종목을 가리켜 Store 전체가 손상으로 판정되므로 막는다(숨기기를 쓴다).
+ */
+export function checkExerciseDelete(store: Store, id: string): DeleteCheck {
+  if (!store.exercises.some((e) => e.id === id)) return { ok: false, reason: "not-found" };
+  if (isSeedExercise(id)) return { ok: false, reason: "seed" };
+  const uses = exerciseUseCount(store, id);
+  return uses > 0 ? { ok: false, reason: "in-use", uses } : { ok: true };
 }

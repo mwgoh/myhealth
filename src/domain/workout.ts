@@ -84,6 +84,21 @@ export function newEntryDraft(ex: Exercise): EntryDraft {
   }
 }
 
+/**
+ * 고른 종목들을 순서대로 초안에 덧붙인다. 이미 초안에 있는 종목과 목록 안의 중복은 건너뛴다.
+ * added는 새로 붙은 종목 초안이다. 붙인 것이 없으면 같은 초안 객체를 돌려준다.
+ */
+export function appendExercises(d: WorkoutDraft, exercises: readonly Exercise[]): { draft: WorkoutDraft; added: EntryDraft[] } {
+  const present = new Set(d.entries.map((e) => e.exerciseId));
+  const added: EntryDraft[] = [];
+  for (const ex of exercises) {
+    if (present.has(ex.id)) continue;
+    present.add(ex.id);
+    added.push(newEntryDraft(ex));
+  }
+  return { draft: added.length === 0 ? d : { ...d, entries: [...d.entries, ...added] }, added };
+}
+
 export function addSet(entry: EntryDraft): EntryDraft {
   switch (entry.kind) {
     case "weighted":

@@ -148,6 +148,28 @@ describe("쓰기", () => {
     expect(saved.exercises.at(-1)?.name).toBe("케틀벨 스윙");
   });
 
+  it("deleteExercise: 기록에 쓰이지 않은 직접 추가 종목만 지운다", () => {
+    const { st, storage } = loaded();
+    const added = st.addExercise({ name: "케틀벨 스윙", category: "strength", kind: "weighted" });
+    if (!added.ok) throw new Error("추가 실패");
+    expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: true, write: "saved" });
+    expect(readyStore(st.getState()).exercises.some((e) => e.id === added.exercise.id)).toBe(false);
+    const saved: Store = JSON.parse(storage.raw()!);
+    expect(saved.exercises.some((e) => e.id === added.exercise.id)).toBe(false);
+  });
+
+  it("deleteExercise: 기본 종목과 기록에 쓰인 종목은 지우지 않고 이유를 알려준다", () => {
+    const { st, storage } = loaded();
+    const added = st.addExercise({ name: "케틀벨 스윙", category: "strength", kind: "timed" });
+    if (!added.ok) throw new Error("추가 실패");
+    st.upsertWorkout({ ...workout("w1"), entries: [{ id: "e", exerciseId: added.exercise.id, kind: "timed", sets: [{ seconds: 30 }] }] });
+    const before = storage.setCalls;
+    expect(st.deleteExercise("seed-plank")).toEqual({ ok: false, reason: "seed" });
+    expect(st.deleteExercise(added.exercise.id)).toEqual({ ok: false, reason: "in-use", uses: 1 });
+    expect(storage.setCalls).toBe(before);
+    expect(readyStore(st.getState()).exercises.some((e) => e.id === added.exercise.id)).toBe(true);
+  });
+
   it("setExerciseArchived", () => {
     const { st } = loaded();
     expect(st.setExerciseArchived("seed-plank", true)).toBe("saved");

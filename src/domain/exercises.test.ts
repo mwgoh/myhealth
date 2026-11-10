@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkNewExerciseName, defaultKindFor, pickerList } from "./exercises";
+import { checkExerciseDelete, checkNewExerciseName, defaultKindFor, exerciseUseCount, isSeedExercise, pickerList } from "./exercises";
 import { createInitialStore } from "./seed";
 import { CATEGORIES, type Exercise, type Store, type Workout } from "./types";
 
@@ -101,5 +101,39 @@ describe("pickerList", () => {
     const s = createInitialStore();
     s.exercises.find((e) => e.id === "seed-plank")!.archived = true;
     expect(pickerList(s, { category: "core", query: "" }).map((e) => e.id)).not.toContain("seed-plank");
+  });
+});
+
+describe("checkExerciseDelete", () => {
+  const custom: Exercise = { id: "c1", name: "케틀벨 스윙", kind: "timed", category: "strength", archived: false };
+  const withCustom = (workouts: Workout[] = []): Store => {
+    const s = createInitialStore();
+    return { ...s, exercises: [...s.exercises, custom], workouts };
+  };
+
+  it("기록에 쓰이지 않은 직접 추가 종목은 삭제할 수 있다", () => {
+    expect(checkExerciseDelete(withCustom(), "c1")).toEqual({ ok: true });
+  });
+
+  it("기본 종목은 삭제할 수 없다(숨기기만)", () => {
+    expect(checkExerciseDelete(withCustom(), "seed-plank")).toEqual({ ok: false, reason: "seed" });
+    expect(isSeedExercise("seed-plank")).toBe(true);
+    expect(isSeedExercise("c1")).toBe(false);
+  });
+
+  it("기록에 쓰인 종목은 삭제할 수 없고, 쓰인 기록 수를 알려준다", () => {
+    const s = withCustom([workoutUsing("w1", "2026-11-01", "c1"), workoutUsing("w2", "2026-11-02", "c1"), workoutUsing("w3", "2026-11-03", "seed-plank")]);
+    expect(exerciseUseCount(s, "c1")).toBe(2);
+    expect(checkExerciseDelete(s, "c1")).toEqual({ ok: false, reason: "in-use", uses: 2 });
+  });
+
+  it("한 기록에 같은 종목이 여러 번 있어도 기록 1개로 센다", () => {
+    const w = workoutUsing("w1", "2026-11-01", "c1");
+    const twice: Workout = { ...w, entries: [...w.entries, { ...w.entries[0], id: "w1-e2" }] };
+    expect(exerciseUseCount(withCustom([twice]), "c1")).toBe(1);
+  });
+
+  it("없는 종목", () => {
+    expect(checkExerciseDelete(withCustom(), "nope")).toEqual({ ok: false, reason: "not-found" });
   });
 });
