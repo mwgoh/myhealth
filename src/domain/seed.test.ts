@@ -6,14 +6,14 @@ const find = (id: string) => SEED_EXERCISES.find((e) => e.id === id);
 const ofCategory = (c: Category) => SEED_EXERCISES.filter((e) => e.category === c);
 
 describe("기본 종목", () => {
-  it("52개이고 ID가 중복되지 않는다", () => {
-    expect(SEED_EXERCISES).toHaveLength(52);
-    expect(new Set(SEED_EXERCISES.map((e) => e.id)).size).toBe(52);
+  it("55개이고 ID가 중복되지 않는다", () => {
+    expect(SEED_EXERCISES).toHaveLength(55);
+    expect(new Set(SEED_EXERCISES.map((e) => e.id)).size).toBe(55);
   });
 
   it("분류별 개수", () => {
     expect(ofCategory("strength")).toHaveLength(7);
-    expect(ofCategory("kettlebell")).toHaveLength(5);
+    expect(ofCategory("kettlebell")).toHaveLength(8);
     expect(ofCategory("dumbbell")).toHaveLength(6);
     expect(ofCategory("bodyweight")).toHaveLength(9);
     expect(ofCategory("core")).toHaveLength(9);
@@ -68,6 +68,9 @@ describe("#케틀벨·#덤벨 종목 (2026-11-10)", () => {
       "seed-kb-deadlift",
       "seed-kb-row",
       "seed-kb-press",
+      "seed-kb-turkish-getup",
+      "seed-kb-clean-press",
+      "seed-kb-snatch",
     ]);
     expect(ofCategory("dumbbell").map((e) => e.id)).toEqual([
       "seed-dumbbell-curl",
@@ -80,6 +83,27 @@ describe("#케틀벨·#덤벨 종목 (2026-11-10)", () => {
     expect(find("seed-kb-swing")?.name).toBe("케틀벨 스윙");
     expect(getGuide("seed-kb-swing")).toEqual({ target: "둔근·햄스트링", tip: "엉덩이를 뒤로 접었다가 힘차게 밀어 벨을 가슴 높이까지 띄운다" });
     expect(getGuide("seed-db-kickback")).toEqual({ target: "삼두", tip: "상체를 숙이고 위팔을 몸통에 붙인 채 팔꿈치를 펴 뒤로 민다" });
+  });
+});
+
+describe("#케틀벨 종목 추가 (2026-11-11)", () => {
+  it("터키쉬 겟업·클린 앤 프레스·스내치의 이름·측정 방식·가이드", () => {
+    expect(find("seed-kb-turkish-getup")).toMatchObject({ name: "터키쉬 겟업", kind: "weighted", category: "kettlebell", archived: false });
+    expect(find("seed-kb-clean-press")).toMatchObject({ name: "클린 앤 프레스", kind: "weighted", category: "kettlebell", archived: false });
+    expect(find("seed-kb-snatch")).toMatchObject({ name: "스내치", kind: "weighted", category: "kettlebell", archived: false });
+    expect(getGuide("seed-kb-turkish-getup")).toEqual({ target: "전신·어깨 안정", tip: "누워서 벨을 수직으로 든 채 벨을 보며 일어선다, 한쪽을 한 세트로 적는다" });
+    expect(getGuide("seed-kb-clean-press")).toEqual({ target: "전신·어깨", tip: "벨을 바닥에서 가슴 높이(랙)로 단번에 올린 뒤 머리 위로 민다, 한쪽을 한 세트로 적는다" });
+    expect(getGuide("seed-kb-snatch")).toEqual({ target: "둔근·햄스트링·어깨", tip: "벨을 바닥에서 머리 위까지 한 번에 끌어올린다, 한쪽을 한 세트로 적는다" });
+  });
+
+  it("2026-11-10 데이터(기본 종목 52개)에는 새 종목 3개만 끝에 더한다", () => {
+    const added = ["seed-kb-turkish-getup", "seed-kb-clean-press", "seed-kb-snatch"];
+    const before = createInitialStore();
+    before.exercises = before.exercises.filter((e) => !added.includes(e.id));
+    expect(before.exercises).toHaveLength(52);
+    const after = syncSeedExercises(before);
+    expect(after.exercises.slice(0, 52)).toEqual(before.exercises);
+    expect(after.exercises.slice(52).map((e) => e.id)).toEqual(added);
   });
 });
 
@@ -100,7 +124,7 @@ describe("syncSeedExercises", () => {
     const before = oldStore();
     expect(before.exercises).toHaveLength(42);
     const after = syncSeedExercises(before);
-    expect(after.exercises).toHaveLength(52);
+    expect(after.exercises).toHaveLength(55);
     expect(after.exercises.slice(0, 42).map((e) => e.id)).toEqual(before.exercises.map((e) => e.id));
     expect(after.exercises.find((e) => e.id === "seed-dumbbell-curl")?.category).toBe("dumbbell");
   });

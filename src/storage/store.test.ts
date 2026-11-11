@@ -52,7 +52,7 @@ describe("불러오기", () => {
   it("빈 저장소 → 기본 데이터를 만들어 저장한다", () => {
     const { st, storage } = loaded();
     const store = readyStore(st.getState());
-    expect(store.exercises).toHaveLength(52);
+    expect(store.exercises).toHaveLength(55);
     expect(JSON.parse(storage.raw()!)).toEqual(store);
   });
 
@@ -193,7 +193,7 @@ describe("쓰기", () => {
   it("resetAll은 corrupt에서도 동작한다", () => {
     const { st, storage } = loaded(memoryStorage("{bad json"));
     expect(st.resetAll()).toBe("saved");
-    expect(readyStore(st.getState()).exercises).toHaveLength(52);
+    expect(readyStore(st.getState()).exercises).toHaveLength(55);
     expect(JSON.parse(storage.raw()!)).toEqual(createInitialStore());
   });
 });
@@ -241,7 +241,7 @@ describe("기본 종목 채우기 (2026-11-10)", () => {
   /** 2026-11-09 형식: 기본 종목 42개, 덤벨컬은 #근력운동 */
   function oldFormat(): Store {
     const s = createInitialStore();
-    const added = new Set(["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-db-shoulder-press", "seed-db-bench-press", "seed-db-row", "seed-db-lateral-raise", "seed-db-kickback"]);
+    const added = new Set(["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-kb-turkish-getup", "seed-kb-clean-press", "seed-kb-snatch", "seed-db-shoulder-press", "seed-db-bench-press", "seed-db-row", "seed-db-lateral-raise", "seed-db-kickback"]);
     return {
       ...s,
       exercises: s.exercises.filter((e) => !added.has(e.id)).map((e) => (e.id === "seed-dumbbell-curl" ? { ...e, category: "strength" as const } : e)),
@@ -252,10 +252,10 @@ describe("기본 종목 채우기 (2026-11-10)", () => {
     const storage = memoryStorage(JSON.stringify(oldFormat()));
     const { st } = loaded(storage);
     const store = readyStore(st.getState());
-    expect(store.exercises).toHaveLength(52);
+    expect(store.exercises).toHaveLength(55);
     expect(store.exercises.find((e) => e.id === "seed-dumbbell-curl")?.category).toBe("dumbbell");
     const saved: Store = JSON.parse(storage.raw()!);
-    expect(saved.exercises).toHaveLength(52);
+    expect(saved.exercises).toHaveLength(55);
   });
 
   it("이미 최신이면 다시 저장하지 않는다", () => {
@@ -274,7 +274,7 @@ describe("기본 종목 채우기 (2026-11-10)", () => {
   it("예전 백업을 가져와도(replaceAll) 새 기본 종목이 채워진다", () => {
     const { st } = loaded();
     expect(st.replaceAll(oldFormat())).toBe("saved");
-    expect(readyStore(st.getState()).exercises).toHaveLength(52);
+    expect(readyStore(st.getState()).exercises).toHaveLength(55);
   });
 });
 

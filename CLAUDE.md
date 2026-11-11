@@ -100,7 +100,7 @@
 | `npm test` | 관절 계산, 카운터, 종목 제약(모든 프레임) 테스트 |
 | `npm run typecheck` | 타입 검사 |
 | `npm run stills [-- <폴더> [sheet-01 ...]]` | 자세 확인 시트 PNG(종목 4개 × 주요 장면 3개). 기본 위치 `video/out/stills` |
-| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만. 52개 전체는 한 시간 가까이 걸린다 |
+| `npm run render [-- seed-squat ...]` | mp4 렌더링 후 크기·길이·코덱·1.5MB 이하를 검사한다. ID를 주면 그 종목만. 55개 전체는 한 시간 가까이 걸린다 |
 | `npm run studio` | 브라우저 미리보기 (포트 3940) |
 
 - 렌더링용 내부 서버 포트는 3939로 고정했다. 기본값으로 두면 앱 서버가 3000번을 쓰고 있어도 Remotion이 3000번을 골라 앱 페이지에 연결된다.
@@ -118,7 +118,7 @@
   - `seed.ts`는 `./types`를 `import type`으로만 가져와야 한다. 값으로 가져오면 영상 번들에 zod가 들어간다.
   - 영상이 있는 종목의 문구를 바꾸면 영상을 다시 렌더링한다.
 - 분류 라벨과 색은 `src/layout.ts`에 복사본이 있다. `layout.test.ts`가 앱의 `types.ts`·`globals.css`와 같은지 확인한다.
-- 기본 종목 52개 모두 영상이 있다. 앱의 `src/domain/videos.ts`는 기본 종목 목록에서 영상 목록을 만들고, 앱 테스트가 `public/videos/`의 파일과 일치하는지 확인한다.
+- 기본 종목 55개 모두 영상이 있다. 앱의 `src/domain/videos.ts`는 기본 종목 목록에서 영상 목록을 만들고, 앱 테스트가 `public/videos/`의 파일과 일치하는지 확인한다.
 - 기본 종목을 추가하면 영상도 만들어야 앱 테스트가 통과한다.
   1. `src/exercises/`에 정의를 만들고 `VIDEO_EXERCISES`에 같은 순서로 등록한다.
   2. `exercises.test.ts`에 그 종목의 제약을 추가한다.

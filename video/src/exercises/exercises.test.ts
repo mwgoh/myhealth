@@ -19,6 +19,10 @@ import { DIP_HANDS } from "./dips";
 import { GLUTE_BRIDGE } from "./glutebridge";
 import { counterBoxOf, HEAD_INSET, onGround as onGroundAt, pt, toScreen } from "./helpers";
 import { HIP_FLEXOR } from "./hipflexor";
+import { KB_CLEAN_PRESS } from "./kbcleanpress";
+import { KB_PICKUP } from "./kbpickup";
+import { KB_SNATCH } from "./kbsnatch";
+import { TGU } from "./kbturkishgetup";
 import { HOLLOW_HIP } from "./hollowhold";
 import { VIDEO_EXERCISES } from "./index";
 import { LEG_PRESS } from "./legpress";
@@ -65,7 +69,7 @@ describe("종목 정의와 앱 seed", () => {
     expect(new Set(VIDEO_EXERCISES.map((d) => d.id)).size).toBe(VIDEO_EXERCISES.length);
   });
 
-  it("기본 종목 42개 모두 영상 정의가 있고 순서가 같다", () => {
+  it("기본 종목 모두 영상 정의가 있고 순서가 같다", () => {
     expect(VIDEO_EXERCISES.map((d) => d.id)).toEqual(SEED_EXERCISES.map((e) => e.id));
   });
 
@@ -452,7 +456,7 @@ describe("종목 제약: #케틀벨·#덤벨", () => {
   };
 
   it("선 자세 종목은 두 발목이 바닥에 고정된다", () => {
-    for (const id of ["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-db-shoulder-press", "seed-db-lateral-raise", "seed-db-kickback"]) {
+    for (const id of ["seed-kb-swing", "seed-kb-goblet-squat", "seed-kb-deadlift", "seed-kb-row", "seed-kb-press", "seed-kb-clean-press", "seed-kb-snatch", "seed-db-shoulder-press", "seed-db-lateral-raise", "seed-db-kickback"]) {
       ankles(id);
     }
   });
@@ -475,6 +479,103 @@ describe("종목 제약: #케틀벨·#덤벨", () => {
 
   it("케틀벨 원암 로우: 받치는 손은 무릎 위에 있다", () => {
     for (const p of ankles("seed-kb-row")) expect(dist(p.far.hand, p.far.knee)).toBeLessThan(20);
+  });
+
+  /** 손잡이(손)에서 몸통 중심까지 18px, 몸통 반지름 15px, 바닥선 위끝은 GROUND_Y + 7 */
+  const bellOnFloor = (p: Pose) => Math.abs(p.near.hand.y + 18 + 15 - (GROUND_Y + 7)) < 0.5;
+  /** 벨을 든 팔이 곧게 펴져 머리 위에 있다 */
+  const lockedOut = (p: Pose) => {
+    expect(dist(p.shoulder, p.near.hand)).toBeGreaterThan(SEG.upperArm + SEG.forearm - 2);
+    expect(Math.abs(p.near.hand.x - p.shoulder.x)).toBeLessThan(15);
+    expect(p.near.hand.y).toBeLessThan(p.head.y - SEG.headR - 20);
+  };
+
+  it("터키쉬 겟업·클린 앤 프레스·스내치: 관절이 한 프레임에 45px 넘게 튀지 않는다(반복 경계 포함)", () => {
+    for (const id of ["seed-kb-turkish-getup", "seed-kb-clean-press", "seed-kb-snatch"]) {
+      const poses = allPoses(byId(id));
+      for (let f = 1; f < poses.length; f++) {
+        const a = lowPoints(poses[f - 1]);
+        const b = lowPoints(poses[f]);
+        for (let k = 0; k < a.length; k++) expect(dist(a[k], b[k]), `${id} 프레임 ${f} 점 ${k}`).toBeLessThan(45);
+      }
+    }
+  });
+
+  it("터키쉬 겟업: 벨을 든 팔은 내내 수직이고, 세운 무릎 쪽 발은 바닥에 고정된다", () => {
+    for (const p of allPoses(byId("seed-kb-turkish-getup"))) {
+      expect(Math.abs(p.near.hand.x - p.shoulder.x)).toBeLessThan(EPS);
+      expect(p.shoulder.y - p.near.hand.y).toBeCloseTo(SEG.upperArm + SEG.forearm, 6);
+      expect(dist(p.near.ankle, TGU.FOOT)).toBeLessThan(EPS);
+      expect(onGround(p.near.toe)).toBe(true);
+    }
+  });
+
+  it("터키쉬 겟업: 누움 → 팔꿈치 → 손 → 브리지 → 다리 넣기 → 한쪽 무릎 → 서기 순서로 일어나고 같은 길로 눕는다", () => {
+    const def = byId("seed-kb-turkish-getup");
+    const [lie, elbow, hand, bridge, sweep, kneel, stand] = TGU.STAGE_FRAMES.map((f) => def.pose(f));
+    // 누움: 어깨·엉덩이·먼 쪽 다리가 바닥에 있다
+    expect(onGround(lie.shoulder) && onGround(lie.hip) && onGround(lie.far.ankle)).toBe(true);
+    // 팔꿈치: 받치는 팔꿈치와 손이 바닥에 있고 엉덩이는 그대로다
+    expect(onGround(elbow.far.elbow) && onGround(elbow.far.hand) && onGround(elbow.hip)).toBe(true);
+    expect(GROUND_Y - elbow.shoulder.y).toBeGreaterThan(40);
+    // 손: 받치는 손은 팔꿈치 자세의 그 자리에 있고 팔이 거의 펴진다
+    expect(dist(hand.far.hand, TGU.SUPPORT_HAND)).toBeLessThan(EPS);
+    expect(dist(hand.shoulder, hand.far.hand)).toBeGreaterThan(120);
+    expect(hand.shoulder.y).toBeLessThan(elbow.shoulder.y - 30);
+    // 브리지: 손을 짚은 채 엉덩이를 들고, 먼 쪽 다리는 곧게 펴 발뒤꿈치를 바닥에 댄다
+    expect(dist(bridge.far.hand, TGU.SUPPORT_HAND)).toBeLessThan(EPS);
+    expect(GROUND_Y - bridge.hip.y).toBeGreaterThan(80);
+    expect(onGround(bridge.far.ankle)).toBe(true);
+    expect(dist(bridge.hip, bridge.far.ankle)).toBeCloseTo(SEG.thigh + SEG.shin, 6);
+    // 다리 넣기: 손을 짚은 채 먼 쪽 무릎을 엉덩이 아래 바닥에 꿇는다
+    expect(dist(sweep.far.hand, TGU.SUPPORT_HAND)).toBeLessThan(EPS);
+    expect(onGround(sweep.far.knee) && onGround(sweep.far.ankle)).toBe(true);
+    expect(Math.abs(sweep.far.knee.x - sweep.hip.x)).toBeLessThan(EPS);
+    // 한쪽 무릎: 받치는 손을 떼고 몸통을 세운다. 먼 쪽 무릎과 발목이 바닥에, 가까운 쪽 정강이는 수직이다
+    expect(kneel.far.hand.y).toBeLessThan(GROUND_Y - 60);
+    expect(Math.abs(angleOf(kneel.hip, kneel.shoulder) - 90)).toBeLessThan(EPS);
+    expect(onGround(kneel.far.knee) && onGround(kneel.far.ankle)).toBe(true);
+    expect(Math.abs(kneel.near.knee.x - kneel.near.ankle.x)).toBeLessThan(0.5);
+    // 서기: 두 발이 바닥에 있고 엉덩이가 선 높이다
+    expect(onGround(stand.far.ankle) && onGround(stand.far.toe)).toBe(true);
+    expect(GROUND_Y - stand.hip.y).toBeGreaterThan(175);
+    lockedOut(stand);
+    // 내려오는 길은 올라간 길을 거꾸로 간다
+    for (const [up, down] of TGU.MIRROR_FRAMES) {
+      const a = lowPoints(def.pose(up));
+      const b = lowPoints(def.pose(down));
+      for (let k = 0; k < a.length; k++) expect(dist(a[k], b[k])).toBeLessThan(EPS);
+    }
+  });
+
+  it("클린 앤 프레스·스내치: 시작할 때 벨이 바닥에 닿고 손잡이는 두 발 사이에 있다", () => {
+    for (const id of ["seed-kb-clean-press", "seed-kb-snatch"]) {
+      const p = byId(id).pose(0);
+      expect(bellOnFloor(p), id).toBe(true);
+      expect(dist(p.near.hand, KB_PICKUP.HANDLE), id).toBeLessThan(EPS);
+    }
+  });
+
+  it("클린 앤 프레스: 가슴 높이(랙)에서 멈췄다가 머리 위로 민다", () => {
+    const def = byId("seed-kb-clean-press");
+    const rack = def.pose(KB_CLEAN_PRESS.RACK_FRAME);
+    expect(dist(rack.near.hand, rack.shoulder)).toBeLessThan(25);
+    expect(GROUND_Y - rack.hip.y).toBeGreaterThan(175);
+    // 랙에서 멈추는 동안 움직이지 않는다
+    expectSame([KB_CLEAN_PRESS.RACK_FRAME - 4, KB_CLEAN_PRESS.RACK_FRAME, KB_CLEAN_PRESS.RACK_FRAME + 4].map((f) => def.pose(f).near.hand));
+    lockedOut(def.pose(KB_CLEAN_PRESS.LOCKOUT_FRAME));
+  });
+
+  it("스내치: 랙에서 멈추지 않고 한 번에 머리 위까지 올리고, 벨은 몸 가까이 지난다", () => {
+    const def = byId("seed-kb-snatch");
+    const up = Array.from({ length: KB_SNATCH.TOP_FRAME + 1 }, (_, f) => def.pose(f));
+    lockedOut(up[KB_SNATCH.TOP_FRAME]);
+    for (let f = 1; f < up.length; f++) expect(up[f].near.hand.y, `프레임 ${f}`).toBeLessThanOrEqual(up[f - 1].near.hand.y + EPS);
+    // 손이 어깨 높이(랙 높이, ±30px)를 지날 때 프레임마다 4px 넘게 올라간다: 랙에서 멈추지 않는다
+    for (let f = 1; f < up.length; f++) {
+      if (Math.abs(up[f].near.hand.y - up[f].shoulder.y) < 30) expect(up[f - 1].near.hand.y - up[f].near.hand.y, `프레임 ${f}`).toBeGreaterThan(4);
+    }
+    for (const p of up) expect(Math.abs(p.near.hand.x - p.shoulder.x)).toBeLessThan(40);
   });
 
   it("덤벨 벤치프레스: 엉덩이와 두 발이 고정된다", () => {

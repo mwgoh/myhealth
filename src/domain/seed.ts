@@ -20,6 +20,10 @@ const ROWS: SeedRow[] = [
   ["seed-kb-deadlift", "케틀벨 데드리프트", "weighted", "kettlebell", "둔근·햄스트링·등", "벨을 두 발 사이에 두고 허리를 편 채 엉덩이로 일어선다"],
   ["seed-kb-row", "케틀벨 원암 로우", "weighted", "kettlebell", "등", "상체를 숙여 한 손으로 벨을 옆구리로 당긴다, 한쪽을 한 세트로 적는다"],
   ["seed-kb-press", "케틀벨 프레스", "weighted", "kettlebell", "어깨·삼두", "벨을 어깨에 얹은 자세에서 머리 위로 곧게 민다, 한쪽을 한 세트로 적는다"],
+  // 2026-11-11 추가
+  ["seed-kb-turkish-getup", "터키쉬 겟업", "weighted", "kettlebell", "전신·어깨 안정", "누워서 벨을 수직으로 든 채 벨을 보며 일어선다, 한쪽을 한 세트로 적는다"],
+  ["seed-kb-clean-press", "클린 앤 프레스", "weighted", "kettlebell", "전신·어깨", "벨을 바닥에서 가슴 높이(랙)로 단번에 올린 뒤 머리 위로 민다, 한쪽을 한 세트로 적는다"],
+  ["seed-kb-snatch", "스내치", "weighted", "kettlebell", "둔근·햄스트링·어깨", "벨을 바닥에서 머리 위까지 한 번에 끌어올린다, 한쪽을 한 세트로 적는다"],
   // #덤벨 (2026-11-10, 덤벨컬은 #근력운동에서 옮김)
   ["seed-dumbbell-curl", "덤벨컬", "weighted", "dumbbell", "이두", "팔꿈치를 몸통 옆에 고정하고 반동 없이 올린다"],
   ["seed-db-shoulder-press", "덤벨 숄더 프레스", "weighted", "dumbbell", "어깨·삼두", "덤벨을 귀 옆에서 머리 위로 밀고 허리가 젖혀지지 않게 한다"],

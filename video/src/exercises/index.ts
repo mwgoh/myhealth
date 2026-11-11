@@ -23,11 +23,14 @@ import { hamstring } from "./hamstring";
 import { hipFlexorStretch } from "./hipflexor";
 import { hollowHold } from "./hollowhold";
 import { jumpRope } from "./jumprope";
+import { kbCleanPress } from "./kbcleanpress";
 import { kbDeadlift } from "./kbdeadlift";
 import { kbGobletSquat } from "./kbgobletsquat";
 import { kbPress } from "./kbpress";
 import { kbRow } from "./kbrow";
+import { kbSnatch } from "./kbsnatch";
 import { kbSwing } from "./kbswing";
+import { kbTurkishGetup } from "./kbturkishgetup";
 import { latPulldown } from "./latpulldown";
 import { legPress } from "./legpress";
 import { legRaise } from "./legraise";
@@ -68,6 +71,9 @@ export const VIDEO_EXERCISES: readonly ExerciseVideoDef[] = [
   kbDeadlift,
   kbRow,
   kbPress,
+  kbTurkishGetup,
+  kbCleanPress,
+  kbSnatch,
   // #덤벨
   dumbbellCurl,
   dbShoulderPress,
